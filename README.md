@@ -1,5 +1,7 @@
 # MongoDB & WebApps Final Project
 
+Code can also be found on [GitHub](https://github.com/Naparise/parise-mongodb-final)
+
 My final project for Database Systems and Big Data Processing (COMP SCI 451) at the University of Wisconsin–Green Bay.
 
 ## Project Structure
