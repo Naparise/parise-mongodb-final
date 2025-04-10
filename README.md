@@ -1,3 +1,4 @@
+
 # MongoDB & WebApps Final Project
 
 Code can also be found on [GitHub](https://github.com/Naparise/parise-mongodb-final)
@@ -9,6 +10,11 @@ My final project for Database Systems and Big Data Processing (COMP SCI 451) at 
 * `node/` - node packages and server entry point (webapp.js)
 * `node/public/` - website resources; html/ejs documents, css, images, etc
 
+## Required Software
+
+* [node.js](https://nodejs.org/) - web server backend
+* [mongodb](https://www.mongodb.com/) - database services
+	* Containerized installation of MongoDB is covered in [Database Setup](#database-setup)
 
 ## Installing Node Dependencies
 
@@ -18,7 +24,7 @@ cd node
 npm install
 ```
 
-## Additional Dependencies
+## Database Setup
 
 A MongoDB server connection is needed for this application to run.
 MongoDB can be conveniently installed and run within a Docker container.
