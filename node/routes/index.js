@@ -2,6 +2,8 @@
  * Web page router and program logic
  */
 
+const { faker } = require('@faker-js/faker');
+
 module.exports = function(app, mongoClient) {
 
 	app.get('/', home);
@@ -27,7 +29,7 @@ module.exports = function(app, mongoClient) {
 		console.log('Database connection successful');
 	
 		// Get all items from the database
-		let cursor = db.collection('items').find({}, {_id:0,'name':1,'price':1,'description':1});
+		let cursor = db.collection('items').find({}, {_id:0,'itemID':0,'name':1,'price':1,'description':1});
 		executeQueryCursor(cursor).then((items) => {
 	
 			console.log("Query completed");
@@ -38,6 +40,8 @@ module.exports = function(app, mongoClient) {
 			res.render('shop_catalog', {items});
 		});
 	});
+
+	var idCounter = 0;
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
 	
@@ -50,7 +54,29 @@ module.exports = function(app, mongoClient) {
 			return;
 		}
 	
-		console.log('Database connection successful');
+		console.log('Database connection successful. Generating data...');
+
+		// Create item with random data
+		let item = {
+			itemID:idCounter++, 
+			name:faker.commerce.productName(), 
+			price:faker.commerce.price(),
+			description:faker.commerce.productDescription()
+		};
+
+		// Insert into items table
+		db.collection('items').replaceOne({'itemID':item.itemID}, item, {upsert: true}, function(err, res) {
+
+			if (err) { 
+
+				res.redirect('error');
+				throw err; 
+			}
+			else { 
+
+				console.log('Document inserted successfully'); 
+			}
+		});
 	
 		res.render('fake_data');
 	});
