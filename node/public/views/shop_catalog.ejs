@@ -8,22 +8,39 @@
 	</head>
 	<body id="background">
 
-		<div class="bubble">
-		<% if (items.length > 0) { %>
+		<div class="content">
 
-			<% for (var i = 0; i < items.length; i++) { %>
-				<div>
-					<span><%= items[i]['name'] %></span>
-					<span><%= items[i]['price'] %></span>                 
-					<span><%= items[i]['description'] %></span>                 
-				</div>
+			<div class="item-list-flex">
+
+				<% if (items.length > 0) { %>
+	
+					<% for (var i = 0; i < items.length; i++) { %>
+
+						<a href="/" class="item-container">
+
+							<div class="item-image-container">
+
+								<img src="<%=items[i].imageURL%>", width="225px", height="225px"><br>
+							</div>
+
+							<span class="bold"><%= items[i]['name'] %></span><br>
+							<span>$<%= items[i]['price'] %></span><br>              
+							<span class="description"><%= items[i]['description'] %></span>    
+						</a>
+						<% } %>
+				<% } else { %>
+	
+						<p>No products to see here! Come back after generating some data.</p>
 				<% } %>
-		<% } else { %>
+			</div>
 
-				<p>No products to see here! Come back after generating some data.</p>
-		<% } %>
+			<footer class="bubble static-footer">
 
-			<form action="/" method="post">
-
-				<button type="submit" value="back">Back</button>
-			</form>
+				<form action="/" method="post">
+	
+					<button type="submit" value="back" class="button-larger">Back</button>
+				</form>
+			</div>
+		</div>
+	</body>
+</html>
