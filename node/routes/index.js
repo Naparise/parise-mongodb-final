@@ -41,7 +41,7 @@ module.exports = function(app, mongoClient) {
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
 	
-		let db = mongoClient.db('bankDB');
+		let db = mongoClient.db('shopDB');
 	
 		if (!db) {
 			console.log('db was null!');
