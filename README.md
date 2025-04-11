@@ -48,4 +48,6 @@ The web server can be started by running `webapp.js` within the node directory.
 node webapp.js
 ```
 
-This script contains a hard-coded and publicly accessible session secret for cookie tracking. This would be a major security vulnerability if it was used in a real, public-facing application. In this application, the secret can be customized by setting `COOKIE_SECRET` as an environment variable on the host system, which will be used in place of the default value.
+Running with its default settings, the home page can be accessed at `localhost:3000` from your web browser.
+
+This script contains a hard-coded and publicly accessible session secret for cookie tracking. This would be a major security vulnerability in a real, public-facing application, which this project is not intended to be. In the case that a more secure secret is preferred, it can be customized by setting the `COOKIE_SECRET` environment variable on the host system.
