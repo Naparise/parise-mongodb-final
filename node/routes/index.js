@@ -4,15 +4,13 @@
 
 module.exports = function(app, mongoClient) {
 
-	app.get('/', function(request, res) {	// Home page (GET)
+	app.get('/', home);
+	app.post('/', home);
+	
+	function home(request, res) {
 
 		res.render('index');
-	});
-	
-	app.post('/', function(request, res) {	// Home page (POST)
-	
-		res.render('index');
-	})
+	}
 	
 	app.post('/shop_catalog', function(request, res) {	// Shop Catalog
 		
