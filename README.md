@@ -47,3 +47,5 @@ The web server can be started by running `webapp.js` within the node directory.
 ```bash
 node webapp.js
 ```
+
+This script contains a hard-coded and publicly accessible session secret for cookie tracking. This would be a major security vulnerability if it was used in a real, public-facing application. In this application, the secret can be customized by setting `COOKIE_SECRET` as an environment variable on the host system, which will be used in place of the default value.
