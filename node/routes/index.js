@@ -57,21 +57,22 @@ module.exports = function(app, mongoClient) {
 		res.render('fake_data');
 	});
 
+	/* Misc Functions */
+
+	// Retrieve information from a database cursor and store the results in a list
+	async function executeQueryCursor(cursor) {
+
+		let data = [];
+
+		await cursor.forEach((record) => {
+
+			data.push(record);
+		})
+
+		return data;
+	}
+
+	
+
 	return app;
-}
-
-
-/* Misc Functions */
-
-// Retrieve information from a database cursor and store the results in a list
-async function executeQueryCursor(cursor) {
-
-	let data = [];
-
-	await cursor.forEach((record) => {
-
-		data.push(record);
-	})
-
-	return data;
 }
