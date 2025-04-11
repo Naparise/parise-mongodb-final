@@ -38,10 +38,13 @@ module.exports = function(app, mongoClient) {
 	
 			// Render catalog with retrieved item data
 			res.render('shop_catalog', {items});
+		}, (err) => {
+
+			console.log("Database query failed!");
+			console.error(err);
+			res.redirect('error');
 		});
 	});
-
-	var idCounter = 0;
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
 	
@@ -50,35 +53,44 @@ module.exports = function(app, mongoClient) {
 		if (!db) {
 			console.log('db was null!');
 	
-			res.redirect('error');
-			return;
+			
+			return res.redirect('error');
 		}
 	
 		console.log('Database connection successful. Generating data...');
 
-		// Create item with random data
-		let item = {
-			itemID:idCounter++, 
-			name:faker.commerce.productName(), 
-			price:faker.commerce.price(),
-			description:faker.commerce.productDescription()
-		};
+		let cursor = db.collection('items').find({}, {});
+		executeQueryCursor(cursor).then((items) => {
 
-		// Insert into items table
-		db.collection('items').replaceOne({'itemID':item.itemID}, item, {upsert: true}, function(err, res) {
+			// Create item with random data
+			let item = {
+				itemID:items.length,
+				name:faker.commerce.productName(), 
+				price:faker.commerce.price(),
+				description:faker.commerce.productDescription(),
+				imageURL:faker.image.url({width: 225, height: 225})
+			};
 
-			if (err) { 
+			// Insert into items table
+			db.collection('items').replaceOne({'itemID':item.itemID}, item, {upsert: true}).then(() => {
 
-				res.redirect('error');
-				throw err; 
-			}
-			else { 
+				console.log('Document inserted successfully');
+				
+				res.render('fake_data');
+			}, (err) =>  {
 
-				console.log('Document inserted successfully'); 
-			}
+				if (err) { 
+
+					res.redirect('error');
+					throw err; 
+				}
+			});
+		}, (err) => {
+
+			console.log("Database query failed!");
+			console.error(err);
+			return res.redirect('error');
 		});
-	
-		res.render('fake_data');
 	});
 
 	/* Misc Functions */
