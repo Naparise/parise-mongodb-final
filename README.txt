@@ -8,5 +8,6 @@ mongodb (https://www.mongodb.com/)
 
 Instructions:
 To install the required packages, enter the node directory and run "npm install"
+To start the application, run "node webapp.js"
 
 A MongoDB database hosted across a replication set is required for this application to properly complete database transactions. For instructions on setting up the replication set, see README.md.
