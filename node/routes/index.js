@@ -9,7 +9,7 @@ module.exports = function(app, mongoClient) {
 	app.get('/', home);
 	app.post('/', home);
 	
-	function home(request, res) {
+	function home(request, res) {	// Home page
 
 		res.render('index');
 	}
@@ -94,12 +94,13 @@ module.exports = function(app, mongoClient) {
 		});
 	});
 
-	app.get('error', showError);
-	app.post('error', showError);
+	app.get('/error', showError);
+	app.post('/error', showError);
 
-	function showError(request, res) {
-
+	function showError(request, res) {	// Error page
+		
 		res.render('error');
+		console.log('User redirected to /error');
 	}
 
 	/* Misc Functions */
