@@ -14,11 +14,11 @@ My final project for Database Systems and Big Data Processing (COMP SCI 451) at 
 
 * [node.js](https://nodejs.org/) - web server backend
 * [mongodb](https://www.mongodb.com/) - database services
-	* Containerized installation of MongoDB is covered in [Database Setup](#database-setup)
+	* Replication set config and MongoDB server hosting is covered in [Database Setup](#database-setup)
 
 ## Installing Node Dependencies
 
-To install the required packages, enter the node directory and run the installation command.
+To install the required node packages, enter the node directory and run the installation command.
 ```bash
 cd node
 npm install
@@ -26,20 +26,35 @@ npm install
 
 ## Database Setup
 
-A MongoDB server connection is needed for this application to run.
-MongoDB can be conveniently installed and run within a Docker container.
+This application requires multiple MongoDB servers to be grouped into a replication set due to the application's use of transactions. The following content covers the configuration of this replication set for a standard MongoDB installation (i.e. not through Docker).
 
-Follow [this tutorial](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-community-with-docker/) for pulling the latest MongoDB image and creating a container.
-If connection issues arise, you can try creating a container with the command below to support IPv6. Appending `--bind_ip_all` may also resolve issues, though [this may introduce risks on unsecured systems](https://www.mongodb.com/docs/v4.4/core/security-mongodb-configuration/).
+Upon installing MongoDB, find its configuration file. It should be located at `/bin/mongod.cfg` within the MongoDB installation on Windows, or `/etc/mongod.conf` on Linux. Within this file, paste the content below. Note "rs0" may be replaced with any name you'd like to give the replication set.
+```
+replication:
+  replSetName: "rs0"
+```
 
+Multiple MongoDB servers must now be created to be added to the replication set. The `mongod` command will be used to create each server. When creating these servers, you must specify a unique port for the server to use with `--port`, as well as a unique path for the server's data with `--dbpath`. An example, creating three MongoDB servers on a Unix filesystem, is provided below.
 ```bash
-docker container create --name mongodb -p 27017:27017 mongodb/mongodb-community-server:latest --ipv6
+mongod --port 27017 --replSet rs0 --dbpath "/home/mongoUser/dbs/db1"
+mongod --port 27018 --replSet rs0 --dbpath="/home/mongoUser/dbs/db2"
+mongod --port 27019 --replSet rs0 --dbpath "/home/mongoUser/dbs/db3"
 ```
 
-The MongoDB server can now be started through its container.
-```bash 
-docker start mongodb
+To connect these servers into a replication set, the mongo client shell can be used. Enter the shell by opening a new terminal window and typing either `mongo` on Windows or `mongosh` on Linux. Assuming the replication set is named `rs0` and three MongoDB servers are running on ports `27017`, `27018`, and `27019` respectively, the following commands will link these servers into the set.
+```bash
+rs.initiate();
+rs.add({host:"127.0.0.1:27017",priority:0,votes:0});
+rs.add({host:"127.0.0.1:27018",priority:0,votes:0});
+rs.add({host:"127.0.0.1:27019",priority:0,votes:0});
 ```
+
+You can now validate that the set contains the provided servers.
+```bash
+rs.status();
+```
+
+With the servers added to the replication set, all the required database functionality should be available.
 
 ## Running
 
