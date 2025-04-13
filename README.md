@@ -42,7 +42,7 @@ mongod --port 27019 --replSet rs0 --dbpath "/home/mongoUser/dbs/db3"
 ```
 
 To connect these servers into a replication set, the mongo client shell can be used. Enter the shell by opening a new terminal window and typing either `mongo` on Windows or `mongosh` on Linux. Assuming the replication set is named `rs0` and three MongoDB servers are running on ports `27017`, `27018`, and `27019` respectively, the following commands will link these servers into the set.
-```bash
+```javascript
 rs.initiate();
 rs.add({host:"127.0.0.1:27017",priority:0,votes:0});
 rs.add({host:"127.0.0.1:27018",priority:0,votes:0});
@@ -50,7 +50,7 @@ rs.add({host:"127.0.0.1:27019",priority:0,votes:0});
 ```
 
 You can now validate that the set contains the provided servers.
-```bash
+```javascript
 rs.status();
 ```
 
