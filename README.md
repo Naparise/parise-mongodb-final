@@ -26,9 +26,9 @@ npm install
 
 ## Database Setup
 
-This application requires multiple MongoDB servers to be grouped into a replication set due to the application's use of transactions. The following content covers the configuration of this replication set for a standard MongoDB installation (i.e. not through Docker).
+This application requires multiple MongoDB servers grouped as a replication set to execute transaction-based database queries. The following content covers the configuration of this replication set for a standard MongoDB installation (i.e. not through Docker).
 
-Upon installing MongoDB, find its configuration file. It should be located at `/bin/mongod.cfg` within the MongoDB installation on Windows, or `/etc/mongod.conf` on Linux. Within this file, paste the content below. Note "rs0" may be replaced with any name you'd like to give the replication set.
+Upon installing MongoDB, find its configuration file. It should be located at `/bin/mongod.cfg` within the MongoDB installation on Windows, or `/etc/mongod.conf` on Linux. Within this file, find `#replication` and replace it with the content below. Note "rs0" may be replaced with any name you'd like to give the replication set.
 ```
 replication:
   replSetName: "rs0"
@@ -37,7 +37,7 @@ replication:
 Multiple MongoDB servers must now be created to be added to the replication set. The `mongod` command will be used to create each server. When creating these servers, you must specify a unique port for the server to use with `--port`, as well as a unique path for the server's data with `--dbpath`. An example, creating three MongoDB servers on a Unix filesystem, is provided below.
 ```bash
 mongod --port 27017 --replSet rs0 --dbpath "/home/mongoUser/dbs/db1"
-mongod --port 27018 --replSet rs0 --dbpath="/home/mongoUser/dbs/db2"
+mongod --port 27018 --replSet rs0 --dbpath "/home/mongoUser/dbs/db2"
 mongod --port 27019 --replSet rs0 --dbpath "/home/mongoUser/dbs/db3"
 ```
 
