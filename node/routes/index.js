@@ -72,19 +72,20 @@ module.exports = function(app, mongoClient) {
 			};
 
 			// Insert into items table
-			db.collection('items').replaceOne({'itemID':item.itemID}, item, {upsert: true}).then(() => {
+			addItem(db, item).then((result) => {
 
-				console.log('Document inserted successfully');
-				
-				res.render('fake_data');
-			}, (err) =>  {
+				if (!result.success) {
 
-				if (err) { 
-
-					res.redirect('error');
-					throw err; 
+					console.log(result.txt);
+					return res.redirect('error');
 				}
-			});
+				else {
+
+					console.log(result.txt);
+				}
+
+				res.render('fake_data');
+			})
 		}, (err) => {
 
 			console.log("Database query failed!");
@@ -92,6 +93,14 @@ module.exports = function(app, mongoClient) {
 			return res.redirect('error');
 		});
 	});
+
+	app.get('error', showError);
+	app.post('error', showError);
+
+	function showError(request, res) {
+
+		res.render('error');
+	}
 
 	/* Misc Functions */
 
@@ -108,7 +117,48 @@ module.exports = function(app, mongoClient) {
 		return data;
 	}
 
-	
+	// Insert item(s) into the database using transactions
+	async function addItem(db, item) {
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = {session, returnOriginal: false, upsert: true};
+
+			console.log(item);
+			await db.collection('items').replaceOne({'itemID':item.itemID}, item, queryOptions).then(() => {}, (err) =>  {
+
+				if (err) { 
+
+					messages.txt = 'Error inserting item into database';
+					throw err; 
+				}
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Item insert complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.log(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return messages;
+	}
 
 	return app;
 }
