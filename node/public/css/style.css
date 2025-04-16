@@ -30,6 +30,7 @@
 	background-color: white;
 	border-radius: 16px;
 	padding: 16px;
+	padding-bottom: 48px;
 	margin: 16px;
 
 	width: 250px;
@@ -38,6 +39,8 @@
 
 	text-decoration: none;
 	color: black;
+
+	position: relative;
 }
 
 .item-image-container {
@@ -66,4 +69,10 @@
 
 	padding: 8px 16px 8px 16px;
 	margin: 4px;
+}
+
+.item-button {
+
+	position: absolute;
+	bottom: 16px;
 }

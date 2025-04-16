@@ -28,15 +28,17 @@
 							<% if (items[i].quantity > 0) {%>
 
 								<span>In stock: <%= items[i].quantity %></span><br>
-							<% } else { %>
-								<span>Out of stock</span><br>
-							<% } %>
-							<span class="description"><%= items[i].description %></span>
-							<form action="/add_to_cart" method="post">
+								<span class="description"><%= items[i].description %></span>
+								<form action="/add_to_cart" method="post" class="item-button">
 
-								<input name="itemID" type="hidden" value=<%= items[i].itemID%>>
-								<button type="submit" value="checkout">Add to Cart</button>
-							</form>
+									<input name="itemID" type="hidden" value=<%= items[i].itemID%>>
+									<button type="submit" value="checkout">Add to Cart</button>
+								</form>
+							<% } else { %>
+
+								<span>Out of stock</span><br>
+								<span class="description"><%= items[i].description %></span>
+							<% } %>
 						</div>
 					<% } %>
 				<% } else { %>
