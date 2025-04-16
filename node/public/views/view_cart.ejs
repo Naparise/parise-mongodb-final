@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Your Cart</title>
+		<link rel="stylesheet" type="text/css" href="../css/style.css">
+		<!--<link href='https://fonts.googleapis.com/css?family=Open+Sans:300' rel='stylesheet' type='text/css'>-->
+	</head>
+	<body id="background">
+
+		<div class="bubble">
+
+			<div class="content">
+
+				<div class="item-list-flex">
+	
+					<% if (items.length > 0) { %>
+		
+						<% for (var i = 0; i < items.length; i++) { %>
+	
+							<div class="item-container">
+	
+								<div class="item-image-container">
+	
+									<img src="<%= items[i].imageURL%>", width="225px", height="225px"><br>
+								</div>
+	
+								<span class="bold"><%= items[i]['name'] %></span><br>
+								<span>$<%=items[i]['price'] %></span><br>
+								<% if (items[i].quantity > 0) {%>
+	
+									<span>In stock: <%=items[i].quantity %></span><br>
+								<% } else { %>
+									<span>Out of stock</span><br>
+								<% } %>
+								<span class="description"><%= items[i]['description'] %></span>
+								<form action="/add_to_cart" method="post">
+	
+									<input name="itemID" type="hidden" value=<%= items[i].itemID%>>
+									<button type="submit" value="checkout">Add to Cart</button>
+								</form>
+							</div>
+						<% } %>
+					<% } else { %>
+		
+							<p>No products to see here! Go add some to your cart through the shop catalog.</p>
+					<% } %>
+				</div>
+	
+				<footer class="bubble static-footer">
+	
+					<form action="/" method="post">
+		
+						<button type="submit" value="back" class="button-larger">Back</button>
+					</form>
+				</div>
+			</div>
+
+			<form action="/" method="post">
+
+				<button type="/submit" value="back" class="button-larger">Back</button>
+			</form>
+		</div>
+	</body>
+</html>
