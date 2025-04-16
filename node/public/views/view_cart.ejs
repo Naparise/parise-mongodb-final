@@ -20,13 +20,13 @@
 		
 							<div class="item-image-container">
 		
-								<img src="<%=items[i].imageURL%>", width="225px", height="225px"><br>
+								<img src="<%= items[i].imageURL%>", width="225px", height="225px"><br>
 							</div>
 		
-							<span class="bold"><%=items[i].name %></span><br>
-							<span>$<%=items[i].price %></span><br>
-							<span>Quantity in Cart: <%=items[i].quantity %></span><br>
-							<span class="description"><%=items[i].description %></span>
+							<span class="bold"><%= items[i].name %></span><br>
+							<span>$<%= items[i].price %></span><br>
+							<span>Quantity in Cart: <%= items[i].quantity %></span><br>
+							<span class="description"><%= items[i].description %></span>
 							<form action="/remove_from_cart" method="post">
 		
 								<input name="itemID" type="hidden" value=<%= items[i].itemID%>>

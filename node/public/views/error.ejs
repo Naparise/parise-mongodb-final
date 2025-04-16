@@ -11,9 +11,14 @@
 		<div class="content">
 
 			<div class="bubble">
-
-				<p>An error has occurred while processing your request. Please try again.</p>
-	
+				<p>
+					<% if (typeof error != "undefined") { %>
+						<%= error.message %>
+					<% } else { %>
+					An error has occurred while processing your request. Please try again.
+					<% } %>
+				</p>
+				
 				<form action="/" method="post">
 	
 					<button type="/submit" value="back" class="button-larger">Back</button>

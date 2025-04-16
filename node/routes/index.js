@@ -65,9 +65,8 @@ module.exports = function(app, mongoClient) {
 		let db = mongoClient.db('shopDB');
 	
 		if (!db) {
+
 			console.log('db was null!');
-	
-			
 			return res.redirect('error');
 		}
 	
@@ -109,7 +108,7 @@ module.exports = function(app, mongoClient) {
 		});
 	});
 
-	app.post('/add_to_cart', function(request, res) {	// Add to Cart
+	app.post('/add_to_cart', async function(request, res) {	// Add to Cart
 
 		// Get cookie data
 		sessionData = request.session;
@@ -125,43 +124,93 @@ module.exports = function(app, mongoClient) {
 			sessionData.user.cart = [];
 		}
 
-		// Add selected item to the user's cart, or increment it if the item already exists
+		// If an item ID exists in the request body, attempt to add it to the user's cart
 		if (request.body.itemID) {
 
 			let itemID = parseInt(request.body.itemID);
 
 			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
 			if (!itemID || itemID < 0) itemID = 0;
-			
-			let userCart = sessionData.user.cart;
 
-			console.log(`Selected Item: ${itemID}`);
+			// Get the current quantity of the selected item from the database
+			let db = mongoClient.db('shopDB');
+	
+			if (!db) {
 
-			let itemExists = false;
-			for (let i = 0; i < userCart.length; i++) {
+				console.log('db was null!');
+				return res.redirect('error');
+			}
+	
+			console.log('Database connection successful.');
 
-				if (userCart[i].itemID == itemID) {
+			let queryFilter = {itemID:itemID};
+			let resultFilter = {'_id':0,'itemID':1,'name':0,'price':0,'description':0,'quantity':1};
 
-					userCart[i].quantity++;
-					itemExists = true;
-					break;
+			let item = {};
+
+			await getOneItem(db, queryFilter, resultFilter).then((result) => {
+
+				if (result.messages.success) {
+
+					console.log("Query completed");
+
+					item = result.item;
+					console.log(item);
+
+					// Verify that the item's quantity is greater than 0 before allowing the user to add the item to their cart
+					// The "Add Item" button should be hidden on items that are out of stock, but the stock could have changed while the user was viewing the page
+					if (item.quantity > 0) {
+
+						let userCart = sessionData.user.cart;
+
+						console.log(`Selected Item: ${itemID}`);
+
+						let itemExists = false;
+						for (let i = 0; i < userCart.length; i++) {
+
+							if (userCart[i].itemID == itemID) {
+
+								userCart[i].quantity++;
+								itemExists = true;
+								break;
+							}
+						}
+
+						// Add new item to cart if it was not found
+						if (!itemExists) {
+
+							let item = {};
+							item.itemID = itemID;
+							item.quantity = 1;
+							sessionData.user.cart.push(item);
+						}
+
+						console.log('Items in cart:');
+						console.log(userCart);
+
+						// Return to the home page upon successful cart addition
+						return res.render('index');
+					}
+					else {
+						let error = { message:"We've run into an issue and were unable to add the selected item to your cart. Please try again later." };
+						return res.render('error', { error });
+					}
+				} else {
+
+					console.log("Database query failed!");
+					console.error(err);
+					return res.redirect('error');
 				}
-			}
+				
+			}, (err) => {
 
-			// Add new item to cart if it was not found
-			if (!itemExists) {
-
-				let item = {};
-				item.itemID = itemID;
-				item.quantity = 1;
-				sessionData.user.cart.push(item);
-			}
-
-			console.log('Items in cart:');
-			console.log(userCart);
+				console.log("Database query failed!");
+				console.error(err);
+				return res.redirect('error');
+			});
 		}
-
-		res.render('index');
+		
+		// Render an error if none of the previous logic 
 	});
 
 	app.post('/remove_from_cart', function(request, res) {	// Remove from Cart
@@ -223,7 +272,7 @@ module.exports = function(app, mongoClient) {
 
 		console.log(selectedItemIDs);
 
-		let queryFilter = {itemID:{$in:selectedItemIDs}}
+		let queryFilter = {itemID:{$in:selectedItemIDs}};
 		let resultFilter = {'_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0};
 
 		let items = [];
@@ -323,7 +372,49 @@ module.exports = function(app, mongoClient) {
 		session.endSession();
 		return { messages, items };
 	}
-	
+
+	async function getOneItem(db, queryFilter, resultFilter) {
+
+		let item = {};
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			await db.collection('items').findOne(queryFilter, resultFilter, queryOptions).then((result) => {
+		
+				item = result;
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, item };
+	}
 
 	// Item document insert
 	async function addItem(db, item) {
