@@ -10,7 +10,7 @@
 
 		<div class="content">
 
-			<% if (items.length > 0) { %>
+			<% if (typeof data != "undefined" && typeof data.items != "undefined" && data.items.length > 0) { %>
 
 				<div class="bubble">
 
@@ -18,26 +18,31 @@
 
 						<button type="submit" value="checkout" class="button-larger">Checkout</button>
 					</form>
+
+					<% if (typeof data.info != "undefined") { %>
+
+							<span><%= data.info %></span>
+					<% } %>
 				</div>
 
 				<div class="item-list-flex">
 
-					<% for (var i = 0; i < items.length; i++) { %>
+					<% for (var i = 0; i < data.items.length; i++) { %>
 
 						<div class="item-container">
 		
 							<div class="item-image-container">
 		
-								<img src="<%= items[i].imageURL%>", width="225px", height="225px"><br>
+								<img src="<%= data.items[i].imageURL%>", width="225px", height="225px"><br>
 							</div>
 		
-							<span class="bold"><%= items[i].name %></span><br>
-							<span>$<%= items[i].price %></span><br>
-							<span>Quantity in Cart: <%= items[i].quantity %></span><br>
-							<span class="description"><%= items[i].description %></span>
+							<span class="bold"><%= data.items[i].name %></span><br>
+							<span>$<%= data.items[i].price %></span><br>
+							<span>Quantity in Cart: <%= data.items[i].quantity %></span><br>
+							<span class="description"><%= data.items[i].description %></span>
 							<form action="/remove_from_cart" method="post">
 		
-								<input name="itemID" type="hidden" value=<%= items[i].itemID%>>
+								<input name="itemID" type="hidden" value=<%= data.items[i].itemID%>>
 								<button type="submit" value="remove" class="item-button">Remove From Cart</button>
 							</form>
 						</div>

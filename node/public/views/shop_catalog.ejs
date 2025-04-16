@@ -10,10 +10,10 @@
 
 		<div class="content">
 
-			<div class="item-list-flex">
+			<% if (items.length > 0) { %>
 
-				<% if (items.length > 0) { %>
-	
+				<div class="item-list-flex">
+
 					<% for (var i = 0; i < items.length; i++) { %>
 
 						<div class="item-container">
@@ -41,19 +41,29 @@
 							<% } %>
 						</div>
 					<% } %>
-				<% } else { %>
-	
-						<p>No products to see here! Come back after generating some data.</p>
-				<% } %>
-			</div>
+				</div>
 
-			<footer class="bubble static-footer">
+				<footer class="bubble static-footer">
 
-				<form action="/" method="post">
-	
-					<button type="submit" value="back" class="button-larger">Back</button>
-				</form>
-			</footer>
+					<form action="/" method="post">
+		
+						<button type="submit" value="back" class="button-larger">Back</button>
+					</form>
+				</footer>
+			<% } else { %>
+				<div class="bubble">
+
+					<p>No products to see here! Come back after generating some data.</p>
+
+					<footer class="static-footer">
+
+						<form action="/" method="post">
+			
+							<button type="submit" value="back" class="button-larger">Back</button>
+						</form>
+					</footer>
+				</div>
+			<% } %>
 		</div>
 	</body>
 </html>

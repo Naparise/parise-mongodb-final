@@ -23,7 +23,7 @@ module.exports = function(app, mongoClient) {
 	
 		if (!db) {
 			
-			console.log('db was null!');
+			console.error('db was null!');
 			
 			return res.redirect('error');
 		}
@@ -35,7 +35,7 @@ module.exports = function(app, mongoClient) {
 		let outputFilter = {'_id':0,'itemID':0,'name':1,'price':1,'description':1,'quantity':1};
 		await getItems(db, inputFilter, outputFilter).then((result) => {
 
-			if (result.messages.success) {
+			if (result.messages.success && result.items) {
 
 				let items = result.items
 
@@ -47,14 +47,14 @@ module.exports = function(app, mongoClient) {
 
 			} else {
 
-				console.log("Database query failed!");
+				console.error("Database query failed!");
 				console.error(err);
 				return res.redirect('error');
 			}
 			
 		}, (err) => {
 
-			console.log("Database query failed!");
+			console.error("Database query failed!");
 			console.error(err);
 			return res.redirect('error');
 		});
@@ -66,7 +66,7 @@ module.exports = function(app, mongoClient) {
 	
 		if (!db) {
 
-			console.log('db was null!');
+			console.error('db was null!');
 			return res.redirect('error');
 		}
 	
@@ -88,7 +88,7 @@ module.exports = function(app, mongoClient) {
 			// Insert into items table
 			addItem(db, item).then((result) => {
 
-				if (!result.success) {
+				if (!result.messages.success) {
 
 					console.log(result.txt);
 					return res.redirect('error');
@@ -102,7 +102,7 @@ module.exports = function(app, mongoClient) {
 			})
 		}, (err) => {
 
-			console.log("Database query failed!");
+			console.error("Database query failed!");
 			console.error(err);
 			return res.redirect('error');
 		});
@@ -137,7 +137,7 @@ module.exports = function(app, mongoClient) {
 	
 			if (!db) {
 
-				console.log('db was null!');
+				console.error('db was null!');
 				return res.redirect('error');
 			}
 	
@@ -150,7 +150,7 @@ module.exports = function(app, mongoClient) {
 
 			await getOneItem(db, queryFilter, resultFilter).then((result) => {
 
-				if (result.messages.success) {
+				if (result.messages.success && result.item) {
 
 					console.log("Query completed");
 
@@ -197,20 +197,21 @@ module.exports = function(app, mongoClient) {
 					}
 				} else {
 
-					console.log("Database query failed!");
+					console.error("Database query failed!");
 					console.error(err);
 					return res.redirect('error');
 				}
 				
 			}, (err) => {
 
-				console.log("Database query failed!");
+				console.error("Database query failed!");
 				console.error(err);
 				return res.redirect('error');
 			});
 		}
 		
-		// Render an error if none of the previous logic 
+		// Render an error if none of the previous control statements returned
+		//return res.redirect('error');
 	});
 
 	app.post('/remove_from_cart', function(request, res) {	// Remove from Cart
@@ -240,7 +241,7 @@ module.exports = function(app, mongoClient) {
 
 	async function viewCart(request, res) {	// View the user's cart
 
-		// Get cookie data
+		// User data
 		sessionData = request.session;
 
 		// Create guest user with cart if one does not already exist
@@ -259,7 +260,7 @@ module.exports = function(app, mongoClient) {
 	
 		if (!db) {
 			
-			console.log('db was null!');
+			console.error('db was null!');
 			
 			return res.redirect('error');
 		}
@@ -279,7 +280,7 @@ module.exports = function(app, mongoClient) {
 
 		await getItems(db, queryFilter, resultFilter).then((result) => {
 
-			if (result.messages.success) {
+			if (result.messages.success && result.items) {
 
 				console.log("Query completed");
 
@@ -300,20 +301,143 @@ module.exports = function(app, mongoClient) {
 
 			} else {
 
-				console.log("Database query failed!");
+				console.error("Database query failed!");
 				console.error(err);
 				return res.redirect('error');
 			}
 			
 		}, (err) => {
 
-			console.log("Database query failed!");
+			console.error("Database query failed!");
 			console.error(err);
 			return res.redirect('error');
 		});
 
 		// Send cart data to the viewing page
-		res.render('view_cart', { items });
+		let data = { 'items':items };
+		res.render('view_cart', { data });
+	}
+
+	app.get('/check_out', checkout);
+	app.post('/check_out', checkout);
+
+	async function checkout(request, res) {	// Shopping cart checkout
+
+		// User data
+		sessionData = request.session;
+
+		// Create guest user with cart if one does not already exist
+		if (sessionData.user == null) {
+
+			console.log("Creating new guest user");
+
+			sessionData.user = {};
+			sessionData.user.username = 'Guest User';
+			// sessionData.user.id = 
+			sessionData.user.cart = [];
+		}
+
+		// Connect to database to retrieve most up-to-date item information
+		let db = mongoClient.db('shopDB');
+	
+		if (!db) {
+			
+			console.error('db was null!');
+			
+			return res.redirect('error');
+		}
+	
+		console.log('Database connection successful');
+	
+		// Get items from the database which the user has in their cart
+		let userCart = sessionData.user.cart;
+		let selectedItemIDs = userCart.map(i => i.itemID);
+
+		console.log(selectedItemIDs);
+
+		let queryFilter = {itemID:{$in:selectedItemIDs}};
+		let resultFilter = {'_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0};
+
+		let items = [];
+
+		await getItems(db, queryFilter, resultFilter).then(async (result) => {
+
+			if (result.messages.success && result.items) {
+
+				console.log("Query completed");
+
+				items = result.items
+				console.log(items);
+
+				// Adjust item quantities/remove items from the cart if needed based on quantity available in the database
+				let altered = false;
+				for (let c = 0; c < userCart.length; c++) {
+
+					for (let i = 0; i < items.length; i++) {
+
+						// Match items by ID
+						if (userCart[c].itemID == items[i].itemID) {
+
+							// Mark whether or not any changes will be made to the cart
+							if (userCart[c].quantity > items[i].quantity) altered = true;
+
+							// Set item quantity to the minimum between the requested quantity and available item quantity
+							items[i].quantity = Math.min(items[i].quantity, userCart[c].quantity);
+						}
+					}
+				}
+
+				// Item objects that will be kept in the cart (quantity > 0)
+				let filteredItems = items.filter((i) => i.quantity > 0);
+
+				// Clear the cart and checkout if no alterations were made, otherwise alter the cart and inform the user
+				sessionData.user.cart = [];
+				if (!altered) {
+
+					let filter = {'itemID':{$in:filteredItems}};
+
+					await checkoutItems(db, filteredItems).then((result) => {
+
+						if (!result.messages.success) {
+							console.log("aah error");
+							return res.redirect('error');
+						}
+						
+						return res.render('check_out');
+					});
+
+				} else {
+
+					// Re-add only the valid items to the cart
+					sessionData.user.cart = filteredItems;
+
+					// Items that have been removed from the cart
+					let removedItems = items.filter((i) => i.quantity == 0);
+
+					let data = { 
+						'items':filteredItems,
+						'removedItems':removedItems,
+						'info':'Sorry, we do not have enough of each item to meet your order. Quantities in your shopping card have been adjusted to meet our current stock, and/or items have been removed.'
+					};
+					return res.render('view_cart', { data });
+				}
+
+			} else {
+
+				console.error("Database query failed!");
+				console.error(err);
+				return res.redirect('error');
+			}
+			
+		}, (err) => {
+
+			console.error("Database query failed!");
+			console.error(err);
+			return res.redirect('error');
+		});
+
+		// Render an error if none of the previous control statements returned
+		//return res.redirect('error');
 	}
 	
 	app.get('/error', showError);
@@ -460,11 +584,11 @@ module.exports = function(app, mongoClient) {
 
 		// End of session
 		session.endSession();
-		return messages;
+		return { messages };
 	}
 
-	// Item checkout
-	async function checkoutItem(db, itemID, quantity) {
+	// Remove the specified quantity from items that fit the given filter
+	async function checkoutItems(db, items) {
 
 		const session = await mongoClient.startSession();
 		messages = {};
@@ -476,26 +600,34 @@ module.exports = function(app, mongoClient) {
 
 			const queryOptions = { session };
 
-			// Find item with the given id
-			let cursor = db.collection('items').find(
-				{'itemID':itemID}, 
-				{'_id':0,'itemID':0,'name':1,'price':0,'description':0,'quantity':1},
-				queryOptions
-			);
+			// Loop over each item to verify it exists and meets the quantity requirements, and update its quantity
+			for (let i = 0; i < items.length; i++) {
 
-			await executeQueryCursor(cursor)
-			.then(async (items) => {
+				let queryFilter = { 'itemID':items[i].itemID };
+				await (getOneItem(db, queryFilter, {'_id':0,'itemID':0,'name':0,'price':0,'description':0,'quantity':1})).then(
+					async (result) => {
 
-				if (items.length > 0) {
+						if (!result.item || !result.messages.success) {
 
-					// Make sure there are enough items in stock to complete the transaction
-					if (items[0].quantity >= quantity) {
+							messages.txt = `Failed to select item id ${items[i].itemID} during checkout`;
+							throw new Error(messages.txt);
+						}
 
+						let item = result.item;
+
+						// Verify the requested quantity is not greater than the available quantity
+						if (item.quantity < items[i].quantity) {
+
+							messages.txt = `Invalid item quantity found during checkout`;
+							throw new Error(messages.txt);
+						}
+
+						// Update the item's quantity by subtracting the shopping cart item's quantity from the item in the database
 						await db.collection('items').updateOne(
-							{'itemID':itemID}, 
-							{$set: {'quantity':items[0].quantity - quantity}}, 
+							{'itemID':items[i].itemID}, 
+							{$set: {'quantity':item.quantity - items[i].quantity}}, 
 							queryOptions
-						).then(() => {}, 
+						).then(() => { console.log(`Successfully updated item with id ${items[i].itemID}`) }, 
 						(err) => {
 
 							if (err) {
@@ -504,27 +636,13 @@ module.exports = function(app, mongoClient) {
 								throw err;
 							}
 						});
-					}
-					else {
+					}, 
+					(err) => { 
 
-						messages.txt = `Not enough of item with id ${item.itemID} to complete the checkout`;
-						throw new Error(messages.txt);
-					}
-				}
-				else {
-
-					messages.txt = `The requested item (id: ${item[0].itemID}) does not exist in the database`;
-					throw new Error(messages.txt);
-				}
-
-			}, (err) => {
-
-				if (err) {
-
-					messages.txt = 'Error reading item from database';
+					messages.txt = `Failed to select item id ${items[i].itemID} during checkout`;
 					throw err;
-				}
-			});
+				})
+			}
 
 			// Commit transaction
 			await session.commitTransaction();
@@ -534,7 +652,7 @@ module.exports = function(app, mongoClient) {
 		}
 		catch (error) {
 
-			console.log(error);
+			console.error(error);
 			messages.success = false;
 
 			// Cancel transaction
@@ -543,7 +661,7 @@ module.exports = function(app, mongoClient) {
 
 		// End of session
 		session.endSession();
-		return messages;
+		return { messages };
 	}
 	
 	// Retrieve information from a database cursor and store the results in a list
