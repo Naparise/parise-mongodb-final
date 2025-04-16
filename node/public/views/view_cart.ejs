@@ -27,17 +27,12 @@
 	
 								<span class="bold"><%= items[i]['name'] %></span><br>
 								<span>$<%=items[i]['price'] %></span><br>
-								<% if (items[i].quantity > 0) {%>
-	
-									<span>In stock: <%=items[i].quantity %></span><br>
-								<% } else { %>
-									<span>Out of stock</span><br>
-								<% } %>
+								<span>Quantity in Cart: <%=items[i].quantity %></span><br>
 								<span class="description"><%= items[i]['description'] %></span>
-								<form action="/add_to_cart" method="post">
+								<form action="/remove_from_cart" method="post">
 	
 									<input name="itemID" type="hidden" value=<%= items[i].itemID%>>
-									<button type="submit" value="checkout">Add to Cart</button>
+									<button type="submit" value="remove">Remove From Cart</button>
 								</form>
 							</div>
 						<% } %>
