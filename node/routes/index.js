@@ -13,38 +13,52 @@ module.exports = function(app, mongoClient) {
 
 		res.render('index');
 	}
+
+	app.get('/shop_catalog', catalog);
+	app.post('/shop_catalog', catalog);
 	
-	app.post('/shop_catalog', function(request, res) {	// Shop Catalog
+	async function catalog(request, res) {	// Shop Catalog
 		
 		let db = mongoClient.db('shopDB');
 	
 		if (!db) {
 			
 			console.log('db was null!');
-	
-			res.redirect('error');
-			return;
+			
+			return res.redirect('error');
 		}
 	
 		console.log('Database connection successful');
 	
 		// Get all items from the database
-		let cursor = db.collection('items').find({}, {_id:0,'itemID':0,'name':1,'price':1,'description':1});
-		executeQueryCursor(cursor).then((items) => {
+		let inputFilter = {}
+		let outputFilter = {'_id':0,'itemID':0,'name':1,'price':1,'description':1,'quantity':1};
+		await getItems(db, inputFilter, outputFilter).then((result) => {
+
+			if (result.messages.success) {
+
+				let items = result.items
+
+				console.log("Query completed");
+				console.log(items);
 	
-			console.log("Query completed");
+				// Render catalog with retrieved item data
+				res.render('shop_catalog', { items });
+
+			} else {
+
+				console.log("Database query failed!");
+				console.error(err);
+				return res.redirect('error');
+			}
 			
-			console.log(items);
-	
-			// Render catalog with retrieved item data
-			res.render('shop_catalog', {items});
 		}, (err) => {
 
 			console.log("Database query failed!");
 			console.error(err);
-			res.redirect('error');
+			return res.redirect('error');
 		});
-	});
+	};
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
 	
@@ -68,7 +82,8 @@ module.exports = function(app, mongoClient) {
 				name:faker.commerce.productName(), 
 				price:faker.commerce.price(),
 				description:faker.commerce.productDescription(),
-				imageURL:faker.image.url({width: 225, height: 225})
+				imageURL:faker.image.url({width: 225, height: 225}),
+				quantity:faker.number.int({min: 1, max: 10})
 			};
 
 			// Insert into items table
@@ -94,6 +109,164 @@ module.exports = function(app, mongoClient) {
 		});
 	});
 
+	app.post('/add_to_cart', function(request, res) {	// Add to Cart
+
+		// Get cookie data
+		sessionData = request.session;
+
+		// Create guest user with cart if one does not already exist
+		if (sessionData.user == null) {
+
+			console.log("Creating new guest user");
+
+			sessionData.user = {};
+			sessionData.user.username = 'Guest User';
+			// sessionData.user.id = 
+			sessionData.user.cart = [];
+		}
+
+		// Add selected item to the user's cart, or increment it if the item already exists
+		if (request.body.itemID) {
+
+			let itemID = parseInt(request.body.itemID);
+
+			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
+			if (!itemID || itemID < 0) itemID = 0;
+			
+			let userCart = sessionData.user.cart;
+
+			console.log(`Selected Item: ${itemID}`);
+
+			let itemExists = false;
+			for (let i = 0; i < userCart.length; i++) {
+
+				if (userCart[i].itemID == itemID) {
+
+					userCart[i].quantity++;
+					itemExists = true;
+					break;
+				}
+			}
+
+			// Add new item to cart if it was not found
+			if (!itemExists) {
+
+				let item = {};
+				item.itemID = itemID;
+				item.quantity = 1;
+				sessionData.user.cart.push(item);
+			}
+
+			console.log('Items in cart:');
+			console.log(userCart);
+		}
+
+		res.render('index');
+	});
+
+	app.post('/remove_from_cart', function(request, res) {	// Remove from Cart
+
+		// Get cookie data
+		sessionData = request.session;
+
+		// Create guest user with cart if one does not already exist
+		if (sessionData.user == null) {
+
+			console.log("Creating new guest user");
+
+			sessionData.user = {};
+			sessionData.user.username = 'Guest User';
+			// sessionData.user.id = 
+			sessionData.user.cart = [];
+		}
+
+		// Add selected item to the user's cart, or increment it if the item already exists
+		if (request.body.itemID) {}
+
+
+	});
+
+	app.get('/view_cart', viewCart);
+	app.post('/view_cart', viewCart);
+
+	async function viewCart(request, res) {	// View the user's cart
+
+		// Get cookie data
+		sessionData = request.session;
+
+		// Create guest user with cart if one does not already exist
+		if (sessionData.user == null) {
+
+			console.log("Creating new guest user");
+
+			sessionData.user = {};
+			sessionData.user.username = 'Guest User';
+			// sessionData.user.id = 
+			sessionData.user.cart = [];
+		}
+		
+		// Connect to database to retrieve most up-to-date item information
+		let db = mongoClient.db('shopDB');
+	
+		if (!db) {
+			
+			console.log('db was null!');
+			
+			return res.redirect('error');
+		}
+	
+		console.log('Database connection successful');
+	
+		// Get items from the database which the user has in their cart
+		let userCart = sessionData.user.cart;
+		let selectedItemIDs = userCart.map(i => i.itemID);
+
+		console.log(selectedItemIDs);
+
+		let queryFilter = {itemID:{$in:selectedItemIDs}}
+		let resultFilter = {'_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0};
+
+		let items = [];
+
+		await getItems(db, queryFilter, resultFilter).then((result) => {
+
+			if (result.messages.success) {
+
+				console.log("Query completed");
+
+				items = result.items
+				console.log(items);
+
+				// Add user cart quantity to each item
+				for (let c = 0; c < userCart.length; c++) {
+
+					for (let i = 0; i < items.length; i++) {
+
+						if (userCart[c].itemID == items[i].itemID) {
+
+							items[i].quantity = userCart[c].quantity;
+						}
+					}
+				}
+
+			} else {
+
+				console.log("Database query failed!");
+				console.error(err);
+				return res.redirect('error');
+			}
+			
+		}, (err) => {
+
+			console.log("Database query failed!");
+			console.error(err);
+			return res.redirect('error');
+		});
+
+		// Send cart data to the viewing page
+		res.render('view_cart', { items });
+	}
+	
 	app.get('/error', showError);
 	app.post('/error', showError);
 
@@ -103,22 +276,56 @@ module.exports = function(app, mongoClient) {
 		console.log('User redirected to /error');
 	}
 
-	/* Misc Functions */
+	/* Database Functions */
 
-	// Retrieve information from a database cursor and store the results in a list
-	async function executeQueryCursor(cursor) {
 
-		let data = [];
+	// Item lookup
+	async function getItems(db, queryFilter, resultFilter) {
 
-		await cursor.forEach((record) => {
+		let items = [];
 
-			data.push(record);
-		})
+		const session = await mongoClient.startSession();
+		messages = {};
 
-		return data;
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			let cursor = db.collection('items').find(queryFilter, resultFilter, queryOptions);
+			await executeQueryCursor(cursor).then((result) => {
+		
+				items = result;
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, items };
 	}
+	
 
-	// Insert item(s) into the database using transactions
+	// Item document insert
 	async function addItem(db, item) {
 
 		const session = await mongoClient.startSession();
@@ -129,10 +336,14 @@ module.exports = function(app, mongoClient) {
 
 		try {
 
-			const queryOptions = {session, returnOriginal: false, upsert: true};
+			const queryOptions = { session, returnOriginal: false, upsert: true };
 
 			console.log(item);
-			await db.collection('items').replaceOne({'itemID':item.itemID}, item, queryOptions).then(() => {}, (err) =>  {
+			await db.collection('items').replaceOne(
+				{'itemID':item.itemID}, 
+				item, 
+				queryOptions
+			).then(() => {}, (err) =>  {
 
 				if (err) { 
 
@@ -159,6 +370,102 @@ module.exports = function(app, mongoClient) {
 		// End of session
 		session.endSession();
 		return messages;
+	}
+
+	// Item checkout
+	async function checkoutItem(db, itemID, quantity) {
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			// Find item with the given id
+			let cursor = db.collection('items').find(
+				{'itemID':itemID}, 
+				{'_id':0,'itemID':0,'name':1,'price':0,'description':0,'quantity':1},
+				queryOptions
+			);
+
+			await executeQueryCursor(cursor)
+			.then(async (items) => {
+
+				if (items.length > 0) {
+
+					// Make sure there are enough items in stock to complete the transaction
+					if (items[0].quantity >= quantity) {
+
+						await db.collection('items').updateOne(
+							{'itemID':itemID}, 
+							{$set: {'quantity':items[0].quantity - quantity}}, 
+							queryOptions
+						).then(() => {}, 
+						(err) => {
+
+							if (err) {
+
+								messages.txt = 'Error updating item in database';
+								throw err;
+							}
+						});
+					}
+					else {
+
+						messages.txt = `Not enough of item with id ${item.itemID} to complete the checkout`;
+						throw new Error(messages.txt);
+					}
+				}
+				else {
+
+					messages.txt = `The requested item (id: ${item[0].itemID}) does not exist in the database`;
+					throw new Error(messages.txt);
+				}
+
+			}, (err) => {
+
+				if (err) {
+
+					messages.txt = 'Error reading item from database';
+					throw err;
+				}
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Item successfully updated';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.log(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return messages;
+	}
+	
+	// Retrieve information from a database cursor and store the results in a list
+	async function executeQueryCursor(cursor) {
+
+		let data = [];
+
+		await cursor.forEach((record) => {
+
+			data.push(record);
+		})
+
+		return data;
 	}
 
 	return app;
