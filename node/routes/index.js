@@ -39,7 +39,7 @@ module.exports = function(app, mongoClient) {
 
 				let items = result.items
 
-				console.log("Query completed");
+				console.log('Query completed');
 				console.log(items);
 	
 				// Render catalog with retrieved item data
@@ -47,14 +47,14 @@ module.exports = function(app, mongoClient) {
 
 			} else {
 
-				console.error("Database query failed!");
+				console.error('Database query failed!');
 				console.error(err);
 				return res.redirect('error');
 			}
 			
 		}, (err) => {
 
-			console.error("Database query failed!");
+			console.error('Database query failed!');
 			console.error(err);
 			return res.redirect('error');
 		});
@@ -90,19 +90,19 @@ module.exports = function(app, mongoClient) {
 
 				if (!result.messages.success) {
 
-					console.log(result.txt);
+					console.log(result.messages.txt);
 					return res.redirect('error');
 				}
 				else {
 
-					console.log(result.txt);
+					console.log(result.messages.txt);
 				}
 
 				res.render('fake_data');
 			})
 		}, (err) => {
 
-			console.error("Database query failed!");
+			console.error('Database query failed!');
 			console.error(err);
 			return res.redirect('error');
 		});
@@ -116,7 +116,7 @@ module.exports = function(app, mongoClient) {
 		// Create guest user with cart if one does not already exist
 		if (sessionData.user == null) {
 
-			console.log("Creating new guest user");
+			console.log('Creating new guest user');
 
 			sessionData.user = {};
 			sessionData.user.username = 'Guest User';
@@ -132,7 +132,6 @@ module.exports = function(app, mongoClient) {
 			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
 			if (!itemID || itemID < 0) itemID = 0;
 
-			// Get the current quantity of the selected item from the database
 			let db = mongoClient.db('shopDB');
 	
 			if (!db) {
@@ -148,11 +147,12 @@ module.exports = function(app, mongoClient) {
 
 			let item = {};
 
+			// Get the current quantity of the selected item from the database
 			await getOneItem(db, queryFilter, resultFilter).then((result) => {
 
 				if (result.messages.success && result.item) {
 
-					console.log("Query completed");
+					console.log('Query completed');
 
 					item = result.item;
 					console.log(item);
@@ -197,32 +197,29 @@ module.exports = function(app, mongoClient) {
 					}
 				} else {
 
-					console.error("Database query failed!");
+					console.error('Database query failed!');
 					console.error(err);
 					return res.redirect('error');
 				}
 				
 			}, (err) => {
 
-				console.error("Database query failed!");
+				console.error('Database query failed!');
 				console.error(err);
 				return res.redirect('error');
 			});
 		}
-		
-		// Render an error if none of the previous control statements returned
-		//return res.redirect('error');
 	});
 
-	app.post('/remove_from_cart', function(request, res) {	// Remove from Cart
+	app.post('/remove_from_cart', async function(request, res) {	// Remove from Cart
 
 		// Get cookie data
 		sessionData = request.session;
 
-		// Create guest user with cart if one does not already exist
+		// Create guest user with cart if one somehow does not already exist
 		if (sessionData.user == null) {
 
-			console.log("Creating new guest user");
+			console.log('Creating new guest user');
 
 			sessionData.user = {};
 			sessionData.user.username = 'Guest User';
@@ -230,10 +227,41 @@ module.exports = function(app, mongoClient) {
 			sessionData.user.cart = [];
 		}
 
-		// Add selected item to the user's cart, or increment it if the item already exists
-		if (request.body.itemID) {}
+		// Remove selected item from the user's cart, or decrement it if there are more than one
+		if (request.body.itemID) {
 
+			let itemID = parseInt(request.body.itemID);
+			let userCart = sessionData.user.cart;
 
+			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
+			if (!itemID || itemID < 0) itemID = 0;
+
+			// Find the item in the user's cart
+			let selectedItem = userCart.find((i) => i.itemID == itemID);
+
+			// Check if the item exists in the cart
+			if (selectedItem) {
+
+				// Decrement item's quantity
+				selectedItem.quantity -= 1;
+
+				if (selectedItem.quantity <= 0) {
+
+					console.log('Removing item from cart');
+					console.log(selectedItem);
+
+					// Remove item from cart
+					sessionData.user.cart.splice(userCart.indexOf(selectedItem), 1);
+				}
+
+			}
+			else {
+
+				console.error('Item could not be found in cart!');
+			}
+
+			res.redirect('view_cart');
+		}
 	});
 
 	app.get('/view_cart', viewCart);
@@ -247,7 +275,7 @@ module.exports = function(app, mongoClient) {
 		// Create guest user with cart if one does not already exist
 		if (sessionData.user == null) {
 
-			console.log("Creating new guest user");
+			console.log('Creating new guest user');
 
 			sessionData.user = {};
 			sessionData.user.username = 'Guest User';
@@ -282,9 +310,9 @@ module.exports = function(app, mongoClient) {
 
 			if (result.messages.success && result.items) {
 
-				console.log("Query completed");
+				console.log('Query completed');
 
-				items = result.items
+				items = result.items;
 				console.log(items);
 
 				// Add user cart quantity to each item
@@ -301,14 +329,14 @@ module.exports = function(app, mongoClient) {
 
 			} else {
 
-				console.error("Database query failed!");
+				console.error('Database query failed!');
 				console.error(err);
 				return res.redirect('error');
 			}
 			
 		}, (err) => {
 
-			console.error("Database query failed!");
+			console.error('Database query failed!');
 			console.error(err);
 			return res.redirect('error');
 		});
@@ -329,7 +357,7 @@ module.exports = function(app, mongoClient) {
 		// Create guest user with cart if one does not already exist
 		if (sessionData.user == null) {
 
-			console.log("Creating new guest user");
+			console.log('Creating new guest user');
 
 			sessionData.user = {};
 			sessionData.user.username = 'Guest User';
@@ -364,7 +392,7 @@ module.exports = function(app, mongoClient) {
 
 			if (result.messages.success && result.items) {
 
-				console.log("Query completed");
+				console.log('Query completed');
 
 				items = result.items
 				console.log(items);
@@ -399,7 +427,8 @@ module.exports = function(app, mongoClient) {
 					await checkoutItems(db, filteredItems).then((result) => {
 
 						if (!result.messages.success) {
-							console.log("aah error");
+
+							console.log(result.messages.txt);
 							return res.redirect('error');
 						}
 						
@@ -424,20 +453,17 @@ module.exports = function(app, mongoClient) {
 
 			} else {
 
-				console.error("Database query failed!");
+				console.error('Database query failed!');
 				console.error(err);
 				return res.redirect('error');
 			}
 			
 		}, (err) => {
 
-			console.error("Database query failed!");
+			console.error('Database query failed!');
 			console.error(err);
 			return res.redirect('error');
 		});
-
-		// Render an error if none of the previous control statements returned
-		//return res.redirect('error');
 	}
 	
 	app.get('/error', showError);
