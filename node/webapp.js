@@ -40,12 +40,12 @@ app.set('views', path.join(resPath, 'views'));
 // Database port
 const port = 3000;
 
-initDatabases().then((db) => {
+initDatabases().then((client) => {
 
 	console.log('Connected!')
 
 	// Get connection to database
-	var mongoClient = db.production;
+	var mongoClient = client.production;
 
 	// Link to routing code
 	var application = routes(app, mongoClient);
