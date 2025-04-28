@@ -3,6 +3,7 @@
  */
 
 const { faker } = require('@faker-js/faker');
+const date = require('date-and-time');
 
 module.exports = function(app, mongoClient) {
 
@@ -581,9 +582,7 @@ module.exports = function(app, mongoClient) {
 				sessionData.user.cart = [];
 				if (!altered) {
 
-					let filter = {'itemID':{$in:filteredItems}};
-
-					await checkoutItems(db, filteredItems).then((result) => {
+					await checkoutItems(db, filteredItems, sessionData.user.userID).then((result) => {
 
 						if (!result.messages.success) {
 
@@ -632,26 +631,6 @@ module.exports = function(app, mongoClient) {
 		
 		res.render('error');
 		console.log('User redirected to /error');
-	}
-
-	/* User Registration/Login Functions */
-	async function loginUser(db, username) {
-
-		await getOneUser(db, {'username':username}, {_id:0}).then(
-		(result) => {
-
-			if (!result.messages.success)
-			{
-				return null;
-			}
-
-			return result.user;
-		},
-		(err) => {
-
-			console.log('Error retrieving user from database');
-			return null;
-		});
 	}
 
 	async function validateUser(db, userID) {
@@ -950,8 +929,8 @@ module.exports = function(app, mongoClient) {
 		return { messages };
 	}
 
-	// Remove the specified quantity from items that fit the given filter
-	async function checkoutItems(db, items) {
+	// Remove the specified quantity from items that fit the given filter and add them to a new order
+	async function checkoutItems(db, items, userID) {
 
 		const session = await mongoClient.startSession();
 		messages = {};
@@ -964,9 +943,9 @@ module.exports = function(app, mongoClient) {
 			const queryOptions = { session };
 
 			// Loop over each item to verify it exists and meets the quantity requirements, and update its quantity
-			for (let i = 0; i < items.length; i++) {
+			items.forEach((item) => {
 
-				let queryFilter = { 'itemID':items[i].itemID };
+				let queryFilter = { 'itemID':item.itemID };
 				await (getOneItem(db, queryFilter, {'_id':0,'itemID':0,'name':0,'price':0,'description':0,'quantity':1})).then(
 					async (result) => {
 
@@ -1005,12 +984,63 @@ module.exports = function(app, mongoClient) {
 					messages.txt = `Failed to select item id ${items[i].itemID} during checkout`;
 					throw err;
 				})
-			}
+			});			
+
+			// Create a new order object with a unique ID
+			await getOrders(db, {}, {}).then(
+
+				async (orders) => {
+
+					let order = {};
+					order.userID = userID;
+					order.orderDate = date.format(Date.now(), 'ddd, MMM DD, YYYY HH:mm:ss (zz)');
+					order.items = [];
+
+					// Add relevant item details to the order
+					items.forEach((item) => {
+
+						let cleanedItem = {};
+
+						cleanedItem.name = item.name;
+						cleanedItem.price = item.price;
+						cleanedItem.quantity = item.quantity;
+						cleanedItem.total = cleanedItem.price * cleanedItem.quantity;
+
+						order.items.push(cleanedItem);
+					});
+
+					// Add the order to the database
+					await addOrder(db, order).then(
+					(result) => {
+
+						if (!result.messages.success) {
+
+							messages.txt = result.messages.txt;
+							throw new Error(messages.txt);
+						}
+					},
+					(err) => {
+
+						if (err) {
+
+							messages.txt = result.messages.txt;
+							throw err;
+						}
+					});
+				},
+				(err) => {
+
+					if (err) {
+
+						messages.txt = 'Error reading orders from database';
+						throw err;
+					}
+				});
 
 			// Commit transaction
 			await session.commitTransaction();
 
-			messages.txt = 'Item successfully updated';
+			messages.txt = 'Item successfully updated and order created';
 			messages.success = true;
 		}
 		catch (error) {
@@ -1026,6 +1056,146 @@ module.exports = function(app, mongoClient) {
 		session.endSession();
 		return { messages };
 	}
+
+	/* Database Order Functions */
+
+	// Order lookup
+	async function getOrders(db, queryFilter, resultFilter) {
+
+		let orders = [];
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			let cursor = db.collection('orders').find(queryFilter, resultFilter, queryOptions);
+			await executeQueryCursor(cursor).then((result) => {
+		
+				orders = result;
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, orders };
+	}
+
+	async function getOneOrder(db, queryFilter, resultFilter) {
+
+		let order = {};
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			await db.collection('orders').findOne(queryFilter, resultFilter, queryOptions).then((result) => {
+		
+				order = result;
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, order };
+	}
+
+	// Order document insert
+	async function addOrder(db, order) {
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			console.log(order);
+			await db.collection('orders').insertOne(
+				{ order } ,
+				queryOptions
+			).then(() => {}, (err) =>  {
+
+				if (err) { 
+
+					messages.txt = 'Error inserting order into database';
+					throw err; 
+				}
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Order insert complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.log(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages };
+	}
+
+
+
+	/* Other Database Functions */
 	
 	// Retrieve information from a database cursor and store the results in a list
 	async function executeQueryCursor(cursor) {

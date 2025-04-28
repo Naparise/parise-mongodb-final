@@ -2,6 +2,7 @@
   "dependencies": {
     "@faker-js/faker": "^9.6.0",
     "body-parser": "^2.2.0",
+    "date-and-time": "^3.6.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
