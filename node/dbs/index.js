@@ -16,6 +16,6 @@ function connect() {
 
 module.exports = async function() {
 
-	let db = await Promise.all([connect()]);
-	return { production: db[0] };
+	let clients = await Promise.all([connect()]);
+	return { production: clients[0] };
 }
