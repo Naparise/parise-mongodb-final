@@ -6,10 +6,157 @@ const { faker } = require('@faker-js/faker');
 
 module.exports = function(app, mongoClient) {
 
-	app.get('/', home);
-	app.post('/', home);
+	app.get('/', entry);
+	app.post('/', entry);
+
+	app.get('/home', home);
+	app.post('/home', home);
+
+	function entry(request, res) {	// Redirect to login or home
+
+		if (sessionData.user && validateUser(sessionData.user.userID)) {
+
+			res.render('home');
+		}
+		else {
+			
+			res.render('login_register');
+		}
+	}
+
+	async function handleLoginRequest(request, res) {	// Login request
+
+		let username = request.body.username;
+		let db = establishDBConnection();
+
+		if (!db) return;
+		
+		// Find user in database
+		let inputFilter = {'username':username};
+		let outputFilter = {'_id':0,'userID':1,'username':1};
+		await getOneUser(db, inputFilter, outputFilter).then((result) => {
+
+			if (result.messages.success && result.user) {
+
+				let user = result.user
+
+				console.log('Query completed');
+				console.log(user);
+
+				// Add user to session
+				sessionData.user = {};
+				sessionData.user.userID = user.userID;
+				sessionData.user.username = user.username;
+				sessionData.user.cart = [];
+
+			} else {
+
+				console.error('User could not be logged in');
+				let error = {message:'Unable to find a user by that username.'};
+				return res.render('error', { error });
+			}
+			
+		}, (err) => {
+
+			console.error('Database query failed!');
+			console.error(err);
+			return res.redirect('error');
+		});
+	}
+
+	async function register(request, res) { // User registration
+
+		let username = request.body.username;
+
+		let db = establishDBConnection();
 	
+		if (!db) return;
+	
+		console.log('Database connection successful');
+	
+		// Check if user already exists in database
+		let inputFilter = {'username':username};
+		let outputFilter = {'_id':0,'userID':0,'username':1};
+		await getOneUser(db, inputFilter, outputFilter).then(async (result) => {
+
+			if (result.messages.success) {
+
+				console.log('Query completed');
+
+				if (result.user) {
+
+					console.log('User already exists');
+					let error = {message:'A user by that username already exists.'};
+					return res.render('error', { error });
+				}
+				else {
+
+					console.log('Creating new user');
+					await getUsers(db, {}, {}).then(
+					(res) => {
+
+						if (!res.messages.success) {
+
+							return res.redirect('error');
+						}
+
+						// Create user with provided username
+						let user = {
+							userID:users.length,
+							username:username
+						};
+
+						// Insert into users table
+						addUser(db, user).then((result) => {
+
+							if (!result.messages.success) {
+
+								console.log(result.messages.txt);
+								return res.redirect('error');
+							}
+							else {
+
+								console.log(result.messages.txt);
+							}
+
+							sessionData.user = user;
+							sessionData.user.cart = [];
+							res.render('home');
+						})
+					}, 
+					(err) => {
+
+						console.error('Database query failed!');
+						console.error(err);
+						return res.redirect('error');
+					});
+				}
+
+			} else {
+
+				console.error('Error reading users from database');
+				return res.redirect('error');
+			}
+			
+		}, (err) => {
+
+			console.error('Database query failed!');
+			console.error(err);
+			return res.redirect('error');
+		});
+	}
+
+
+
 	function home(request, res) {	// Home page
+
+		let db = establishDBConnection();
+		if (!db) return;
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
+		}
 
 		res.render('index');
 	}
@@ -19,14 +166,9 @@ module.exports = function(app, mongoClient) {
 	
 	async function catalog(request, res) {	// Shop Catalog
 		
-		let db = mongoClient.db('shopDB');
+		let db = establishDBConnection();
 	
-		if (!db) {
-			
-			console.error('db was null!');
-			
-			return res.redirect('error');
-		}
+		if (!db) return;
 	
 		console.log('Database connection successful');
 	
@@ -47,8 +189,7 @@ module.exports = function(app, mongoClient) {
 
 			} else {
 
-				console.error('Database query failed!');
-				console.error(err);
+				console.error('Catalog query failed!');
 				return res.redirect('error');
 			}
 			
@@ -62,13 +203,9 @@ module.exports = function(app, mongoClient) {
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
 	
-		let db = mongoClient.db('shopDB');
+		let db = establishDBConnection();
 	
-		if (!db) {
-
-			console.error('db was null!');
-			return res.redirect('error');
-		}
+		if (!db) return;
 	
 		console.log('Database connection successful. Generating data...');
 
@@ -132,13 +269,9 @@ module.exports = function(app, mongoClient) {
 			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
 			if (!itemID || itemID < 0) itemID = 0;
 
-			let db = mongoClient.db('shopDB');
+			let db = establishDBConnection();
 	
-			if (!db) {
-
-				console.error('db was null!');
-				return res.redirect('error');
-			}
+			if (!db) return;
 	
 			console.log('Database connection successful.');
 
@@ -284,14 +417,9 @@ module.exports = function(app, mongoClient) {
 		}
 		
 		// Connect to database to retrieve most up-to-date item information
-		let db = mongoClient.db('shopDB');
+		let db = establishDBConnection();
 	
-		if (!db) {
-			
-			console.error('db was null!');
-			
-			return res.redirect('error');
-		}
+		if (!db) return;
 	
 		console.log('Database connection successful');
 	
@@ -366,14 +494,9 @@ module.exports = function(app, mongoClient) {
 		}
 
 		// Connect to database to retrieve most up-to-date item information
-		let db = mongoClient.db('shopDB');
+		let db = establishDBConnection();
 	
-		if (!db) {
-			
-			console.error('db was null!');
-			
-			return res.redirect('error');
-		}
+		if (!db) return;
 	
 		console.log('Database connection successful');
 	
@@ -475,8 +598,184 @@ module.exports = function(app, mongoClient) {
 		console.log('User redirected to /error');
 	}
 
-	/* Database Functions */
+	/* User Registration/Login Functions */
+	async function loginUser(db, username) {
 
+		await getOneUser(db, {'username':username}, {_id:0}).then(
+		(result) => {
+
+			if (!result.messages.success)
+			{
+				return null;
+			}
+
+			return result.user;
+		},
+		(err) => {
+
+			console.log('Error retrieving user from database');
+			return null;
+		});
+	}
+
+	async function validateUser(db, userID) {
+
+		await getOneUser(db, {'userID':userID}, {_id:0, userID:1, username:0}).then(
+		(result) => {
+
+			if (result.messages.success && result.user && result.user.userID == userID)
+			{
+				return true;
+			}
+		},
+		(err) => {
+
+			console.log('Error retrieving user from database');
+		});
+
+		return false;
+	}
+
+	/* Database User Functions */
+
+	// Get users given a query and result filter
+	async function getUsers(db, queryFilter, resultFilter) {
+
+		let users = [];
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			let cursor = db.collection('users').find(queryFilter, resultFilter, queryOptions);
+			await executeQueryCursor(cursor).then((result) => {
+		
+				users = result;
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, users };
+	}
+
+	// Get a single user given a query and result filter
+	async function getOneUser(db, queryFilter, resultFilter) {
+
+		let user = {};
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			await db.collection('users').findOne(queryFilter, resultFilter, queryOptions).then((result) => {
+		
+				user = result;
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, user };
+	}
+
+
+	// User document insert
+	async function addUser(db, user) {
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session, returnOriginal: false, upsert: true };
+
+			console.log(user);
+			await db.collection('users').replaceOne(
+				{'userID':user.userID}, 
+				user, 
+				queryOptions
+			).then(() => {}, (err) =>  {
+
+				if (err) { 
+
+					messages.txt = 'Error inserting user into database';
+					throw err; 
+				}
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'User insert complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.log(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages };
+	}
+
+	/* Database Item Functions */
 
 	// Item lookup
 	async function getItems(db, queryFilter, resultFilter) {
@@ -701,6 +1000,21 @@ module.exports = function(app, mongoClient) {
 		})
 
 		return data;
+	}
+
+	// Establish connection to database
+	function establishDBConnection() {
+
+		let db = mongoClient.db('shopDB');
+	
+		if (!db) {
+			
+			console.error('DB was null!');
+			return res.redirect('error');
+		}
+	
+		console.log('Database connection successful');
+		return db;
 	}
 
 	return app;
