@@ -10,7 +10,63 @@
 
 		<div class="content">
 
+			<% if (typeof data != "undefined" && typeof data.items != "undefined" && data.items.length > 0) { %>
+
+				<div class="bubble">
+
+					<form action="/check_out" method="post">
+
+						<button type="submit" value="checkout" class="button-larger">Checkout</button>
+					</form>
+
+					<% if (typeof data.info != "undefined") { %>
+
+							<span><%= data.info %></span>
+					<% } %>
+				</div>
+
+				<div class="item-list-flex">
+
+					<% for (var i = 0; i < data.items.length; i++) { %>
+
+						<div class="item-container">
+		
+							<div class="item-image-container">
+		
+								<img src="<%= data.items[i].imageURL%>", width="225px", height="225px"><br>
+							</div>
+		
+							<span class="bold"><%= data.items[i].name %></span><br>
+							<span>$<%= data.items[i].price %></span><br>
+							<span>Quantity in Cart: <%= data.items[i].quantity %></span><br>
+							<span class="description"><%= data.items[i].description %></span>
+							<form action="/remove_from_cart" method="post">
+		
+								<input name="itemID" type="hidden" value=<%= data.items[i].itemID%>>
+								<button type="submit" value="remove" class="item-button">Remove From Cart</button>
+							</form>
+						</div>
+					<% } %>
+				</div>
+
+				<footer class="bubble static-footer">
+
+					<form action="/" method="post">
+
+						<button type="submit" value="back" class="button-larger">Back</button>
+					</form>
+				</footer>
+			<% } else { %>
+				<div class="bubble">
+					
+					<p>No products to see here! Go add some to your cart through the shop catalog.</p>
+				
+					<form action="/" method="post">
 			
+						<button type="submit" value="back" class="button-larger">Back</button>
+					</form>
+				</div>
+			<% } %>
 		</div>
 	</body>
 </html>

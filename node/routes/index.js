@@ -633,6 +633,39 @@ module.exports = function(app, mongoClient) {
 		console.log('User redirected to /error');
 	}
 
+	app.get('/view_orders', viewOrders);
+	app.post('/view_orders', viewOrders);
+
+	async function viewOrders(request, res) {
+
+		// Get cookie data
+		sessionData = request.session;
+
+		let db = establishDBConnection();
+
+		if (!db) return;
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
+		}
+
+		let queryFilter = { userID:sessionData.user.userID };
+		await getOrders(db, queryFilter, {}).then(
+		(orders) => {
+
+			return res.render('view_orders', { data: orders });
+		}, 
+		(err) => {
+
+			console.error('Database query failed!');
+			console.error(err);
+			return res.redirect('error');
+		})
+	}
+
+	/* Database User Functions */
+
 	async function validateUser(db, userID) {
 
 		let success = false;
@@ -652,8 +685,6 @@ module.exports = function(app, mongoClient) {
 
 		return success;
 	}
-
-	/* Database User Functions */
 
 	// Get users given a query and result filter
 	async function getUsers(db, queryFilter, resultFilter) {
@@ -993,7 +1024,7 @@ module.exports = function(app, mongoClient) {
 
 					let order = {};
 					order.userID = userID;
-					order.orderDate = date.format(Date.now(), 'ddd, MMM DD, YYYY HH:mm:ss (zz)');
+					order.date = date.format(Date.now(), 'ddd, MMM DD, YYYY HH:mm:ss (zz)');
 					order.items = [];
 
 					// Add relevant item details to the order
