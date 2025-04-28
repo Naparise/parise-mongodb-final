@@ -9,22 +9,38 @@ module.exports = function(app, mongoClient) {
 	app.get('/', entry);
 	app.post('/', entry);
 
-	app.get('/home', home);
-	app.post('/home', home);
-
 	function entry(request, res) {	// Redirect to login or home
 
-		if (sessionData.user && validateUser(sessionData.user.userID)) {
+		// Get cookie data
+		sessionData = request.session;
 
-			res.render('home');
+		let db = establishDBConnection();
+
+		if (!db) return;
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
 		}
-		else {
-			
-			res.render('login_register');
-		}
+
+		let data = {username: sessionData.user.username};
+		res.render('index', { data });
 	}
 
+	app.get('/login_register', loginPage);
+	app.post('/login_register', loginPage);
+
+	async function loginPage(request, res) {
+
+		res.render('login_register');
+	}
+
+	app.post('/login', handleLoginRequest);
+
 	async function handleLoginRequest(request, res) {	// Login request
+
+		// Get cookie data
+		sessionData = request.session;
 
 		let username = request.body.username;
 		let db = establishDBConnection();
@@ -49,6 +65,9 @@ module.exports = function(app, mongoClient) {
 				sessionData.user.username = user.username;
 				sessionData.user.cart = [];
 
+				let data = {username: sessionData.user.username};
+				res.render('index', { data });
+
 			} else {
 
 				console.error('User could not be logged in');
@@ -64,7 +83,12 @@ module.exports = function(app, mongoClient) {
 		});
 	}
 
-	async function register(request, res) { // User registration
+	app.post('/register', handleRegisterRequest);
+
+	async function handleRegisterRequest(request, res) { // User registration
+
+		// Get cookie data
+		sessionData = request.session;
 
 		let username = request.body.username;
 
@@ -93,16 +117,22 @@ module.exports = function(app, mongoClient) {
 
 					console.log('Creating new user');
 					await getUsers(db, {}, {}).then(
-					(res) => {
+					(result) => {
 
-						if (!res.messages.success) {
+						if (!result.messages.success) {
 
 							return res.redirect('error');
 						}
 
+						if (username.length < 3) {
+
+							let error = {message:'Username must be at least 3 characters long.'};
+							return res.render('error', { error });
+						}
+
 						// Create user with provided username
 						let user = {
-							userID:users.length,
+							userID:result.users.length,
 							username:username
 						};
 
@@ -121,7 +151,9 @@ module.exports = function(app, mongoClient) {
 
 							sessionData.user = user;
 							sessionData.user.cart = [];
-							res.render('home');
+
+							let data = {username: sessionData.user.username};
+							res.render('index', { data });
 						})
 					}, 
 					(err) => {
@@ -146,11 +178,28 @@ module.exports = function(app, mongoClient) {
 		});
 	}
 
+	app.post('/logout', logout);
 
+	function logout(request, res) {
+
+		// Invalidate cookie data
+		sessionData = request.session;
+
+		sessionData.user = null;
+
+		res.redirect('login_register');
+	}
+
+	app.get('/home', home);
+	app.post('/home', home);
 
 	function home(request, res) {	// Home page
 
+		// Get cookie data
+		sessionData = request.session;
+
 		let db = establishDBConnection();
+
 		if (!db) return;
 
 		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
@@ -158,19 +207,26 @@ module.exports = function(app, mongoClient) {
 			return res.redirect('login_register');
 		}
 
-		res.render('index');
+		let data = {username: sessionData.user.username};
+		res.render('index', { data });
 	}
 
 	app.get('/shop_catalog', catalog);
 	app.post('/shop_catalog', catalog);
 	
 	async function catalog(request, res) {	// Shop Catalog
-		
+
+		// Get cookie data
+		sessionData = request.session;
+
 		let db = establishDBConnection();
-	
+
 		if (!db) return;
-	
-		console.log('Database connection successful');
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
+		}
 	
 		// Get all items from the database
 		let inputFilter = {}
@@ -202,10 +258,18 @@ module.exports = function(app, mongoClient) {
 	};
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
-	
+
+		// Get cookie data
+		sessionData = request.session;
+
 		let db = establishDBConnection();
-	
+
 		if (!db) return;
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
+		}
 	
 		console.log('Database connection successful. Generating data...');
 
@@ -250,15 +314,13 @@ module.exports = function(app, mongoClient) {
 		// Get cookie data
 		sessionData = request.session;
 
-		// Create guest user with cart if one does not already exist
-		if (sessionData.user == null) {
+		let db = establishDBConnection();
 
-			console.log('Creating new guest user');
+		if (!db) return;
 
-			sessionData.user = {};
-			sessionData.user.username = 'Guest User';
-			// sessionData.user.id = 
-			sessionData.user.cart = [];
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
 		}
 
 		// If an item ID exists in the request body, attempt to add it to the user's cart
@@ -268,12 +330,6 @@ module.exports = function(app, mongoClient) {
 
 			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
 			if (!itemID || itemID < 0) itemID = 0;
-
-			let db = establishDBConnection();
-	
-			if (!db) return;
-	
-			console.log('Database connection successful.');
 
 			let queryFilter = {itemID:itemID};
 			let resultFilter = {'_id':0,'itemID':1,'name':0,'price':0,'description':0,'quantity':1};
@@ -322,7 +378,8 @@ module.exports = function(app, mongoClient) {
 						console.log(userCart);
 
 						// Return to the home page upon successful cart addition
-						return res.render('index');
+						let data = {username: sessionData.user.username};
+						return res.render('index', { data });
 					}
 					else {
 						let error = { message:"We've run into an issue and were unable to add the selected item to your cart. Please try again later." };
@@ -349,15 +406,13 @@ module.exports = function(app, mongoClient) {
 		// Get cookie data
 		sessionData = request.session;
 
-		// Create guest user with cart if one somehow does not already exist
-		if (sessionData.user == null) {
+		let db = establishDBConnection();
 
-			console.log('Creating new guest user');
+		if (!db) return;
 
-			sessionData.user = {};
-			sessionData.user.username = 'Guest User';
-			// sessionData.user.id = 
-			sessionData.user.cart = [];
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
 		}
 
 		// Remove selected item from the user's cart, or decrement it if there are more than one
@@ -386,7 +441,6 @@ module.exports = function(app, mongoClient) {
 					// Remove item from cart
 					sessionData.user.cart.splice(userCart.indexOf(selectedItem), 1);
 				}
-
 			}
 			else {
 
@@ -402,26 +456,17 @@ module.exports = function(app, mongoClient) {
 
 	async function viewCart(request, res) {	// View the user's cart
 
-		// User data
+		// Get cookie data
 		sessionData = request.session;
 
-		// Create guest user with cart if one does not already exist
-		if (sessionData.user == null) {
-
-			console.log('Creating new guest user');
-
-			sessionData.user = {};
-			sessionData.user.username = 'Guest User';
-			// sessionData.user.id = 
-			sessionData.user.cart = [];
-		}
-		
-		// Connect to database to retrieve most up-to-date item information
 		let db = establishDBConnection();
-	
+
 		if (!db) return;
-	
-		console.log('Database connection successful');
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
+		}
 	
 		// Get items from the database which the user has in their cart
 		let userCart = sessionData.user.cart;
@@ -479,26 +524,17 @@ module.exports = function(app, mongoClient) {
 
 	async function checkout(request, res) {	// Shopping cart checkout
 
-		// User data
+		// Get cookie data
 		sessionData = request.session;
 
-		// Create guest user with cart if one does not already exist
-		if (sessionData.user == null) {
-
-			console.log('Creating new guest user');
-
-			sessionData.user = {};
-			sessionData.user.username = 'Guest User';
-			// sessionData.user.id = 
-			sessionData.user.cart = [];
-		}
-
-		// Connect to database to retrieve most up-to-date item information
 		let db = establishDBConnection();
-	
+
 		if (!db) return;
-	
-		console.log('Database connection successful');
+
+		if (!sessionData.user || !validateUser(db, sessionData.user.userID)) {
+
+			return res.redirect('login_register');
+		}
 	
 		// Get items from the database which the user has in their cart
 		let userCart = sessionData.user.cart;
@@ -620,12 +656,14 @@ module.exports = function(app, mongoClient) {
 
 	async function validateUser(db, userID) {
 
+		let success = false;
+
 		await getOneUser(db, {'userID':userID}, {_id:0, userID:1, username:0}).then(
 		(result) => {
 
 			if (result.messages.success && result.user && result.user.userID == userID)
 			{
-				return true;
+				success = true;
 			}
 		},
 		(err) => {
@@ -633,7 +671,7 @@ module.exports = function(app, mongoClient) {
 			console.log('Error retrieving user from database');
 		});
 
-		return false;
+		return success;
 	}
 
 	/* Database User Functions */
