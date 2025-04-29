@@ -666,6 +666,13 @@ module.exports = function(app, mongoClient) {
 		})
 	}
 
+	app.get('/:url', routeAny);
+	
+	function routeAny(request, res) {
+
+		return res.redirect('/');
+	}
+
 	/* Database User Functions */
 
 	async function validateUser(db, userID) {
