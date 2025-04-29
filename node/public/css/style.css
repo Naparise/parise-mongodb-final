@@ -76,3 +76,39 @@
 	position: absolute;
 	bottom: 16px;
 }
+
+table, th, td {
+
+	text-align: center;
+	border: 1px solid black;
+	border-collapse: collapse;
+}
+
+.order-header {
+
+	width: 400px;
+	text-align: left;
+	font-weight: bold;
+}
+
+.item-table-data {
+
+	height: 60px;
+	width: 200px;
+}
+
+.item-table-data-wide {
+
+	height: 60px;
+	width: 300px;
+}
+
+.inline {
+
+	display: inline-block;
+}
+
+.center {
+
+	text-align: center;
+}

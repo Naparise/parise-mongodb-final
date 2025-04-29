@@ -25,7 +25,7 @@ app.use(session({
 	resave: true, 
 	saveUninitialized: true, 
 	secret: process.env.COOKIE_SECRET ? process.env.COOKIE_SECRET : DEFAULT_SECRET, 
-	cookie: { maxAge: 60000}
+	cookie: { maxAge: 600000} // 10 minutes
 }));
 
 

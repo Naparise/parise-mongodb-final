@@ -24,8 +24,7 @@ module.exports = function(app, mongoClient) {
 			return res.redirect('login_register');
 		}
 
-		let data = {username: sessionData.user.username};
-		res.render('index', { data });
+		res.redirect('/home');
 	}
 
 	app.get('/login_register', loginPage);
@@ -49,8 +48,8 @@ module.exports = function(app, mongoClient) {
 		if (!db) return;
 		
 		// Find user in database
-		let inputFilter = {'username':username};
-		let outputFilter = {'_id':0,'userID':1,'username':1};
+		let inputFilter = { 'username':username };
+		let outputFilter = { '_id':0,'userID':1,'username':1 };
 		await getOneUser(db, inputFilter, outputFilter).then((result) => {
 
 			if (result.messages.success && result.user) {
@@ -66,13 +65,12 @@ module.exports = function(app, mongoClient) {
 				sessionData.user.username = user.username;
 				sessionData.user.cart = [];
 
-				let data = {username: sessionData.user.username};
-				res.render('index', { data });
+				res.redirect('/');
 
 			} else {
 
 				console.error('User could not be logged in');
-				let error = {message:'Unable to find a user by that username.'};
+				let error = { 'message':'Unable to find a user by that username.' };
 				return res.render('error', { error });
 			}
 			
@@ -111,7 +109,7 @@ module.exports = function(app, mongoClient) {
 				if (result.user) {
 
 					console.log('User already exists');
-					let error = {message:'A user by that username already exists.'};
+					let error = { 'message':'A user by that username already exists.' };
 					return res.render('error', { error });
 				}
 				else {
@@ -127,14 +125,14 @@ module.exports = function(app, mongoClient) {
 
 						if (username.length < 3) {
 
-							let error = {message:'Username must be at least 3 characters long.'};
+							let error = { 'message':'Username must be at least 3 characters long.' };
 							return res.render('error', { error });
 						}
 
 						// Create user with provided username
 						let user = {
-							userID:result.users.length,
-							username:username
+							'userID':result.users.length,
+							'username':username
 						};
 
 						// Insert into users table
@@ -153,8 +151,7 @@ module.exports = function(app, mongoClient) {
 							sessionData.user = user;
 							sessionData.user.cart = [];
 
-							let data = {username: sessionData.user.username};
-							res.render('index', { data });
+							res.redirect('/');
 						})
 					}, 
 					(err) => {
@@ -208,7 +205,7 @@ module.exports = function(app, mongoClient) {
 			return res.redirect('login_register');
 		}
 
-		let data = {username: sessionData.user.username};
+		let data = { 'username':sessionData.user.username };
 		res.render('index', { data });
 	}
 
@@ -231,7 +228,7 @@ module.exports = function(app, mongoClient) {
 	
 		// Get all items from the database
 		let inputFilter = {}
-		let outputFilter = {'_id':0,'itemID':0,'name':1,'price':1,'description':1,'quantity':1};
+		let outputFilter = { '_id':0,'itemID':0,'name':1,'price':1,'description':1,'quantity':1 };
 		await getItems(db, inputFilter, outputFilter).then((result) => {
 
 			if (result.messages.success && result.items) {
@@ -279,12 +276,12 @@ module.exports = function(app, mongoClient) {
 
 			// Create item with random data
 			let item = {
-				itemID:items.length,
-				name:faker.commerce.productName(), 
-				price:faker.commerce.price(),
-				description:faker.commerce.productDescription(),
-				imageURL:faker.image.url({width: 225, height: 225}),
-				quantity:faker.number.int({min: 1, max: 10})
+				'itemID':items.length,
+				'name':faker.commerce.productName(), 
+				'price':parseFloat(faker.commerce.price()),
+				'description':faker.commerce.productDescription(),
+				'imageURL':faker.image.url({width: 225, height: 225}),
+				'quantity':faker.number.int({min: 1, max: 10})
 			};
 
 			// Insert into items table
@@ -332,8 +329,8 @@ module.exports = function(app, mongoClient) {
 			// Reset the itemID if it is not a number or less than 0, to prevent issues with data tampering
 			if (!itemID || itemID < 0) itemID = 0;
 
-			let queryFilter = {itemID:itemID};
-			let resultFilter = {'_id':0,'itemID':1,'name':0,'price':0,'description':0,'quantity':1};
+			let queryFilter = { 'itemID':itemID };
+			let resultFilter = { '_id':0,'itemID':1,'name':0,'price':0,'description':0,'quantity':1 };
 
 			let item = {};
 
@@ -378,12 +375,10 @@ module.exports = function(app, mongoClient) {
 						console.log('Items in cart:');
 						console.log(userCart);
 
-						// Return to the home page upon successful cart addition
-						let data = {username: sessionData.user.username};
-						return res.render('index', { data });
+						return res.redirect('/');
 					}
 					else {
-						let error = { message:"We've run into an issue and were unable to add the selected item to your cart. Please try again later." };
+						let error = { 'message':"We've run into an issue and were unable to add the selected item to your cart. Please try again later." };
 						return res.render('error', { error });
 					}
 				} else {
@@ -475,8 +470,8 @@ module.exports = function(app, mongoClient) {
 
 		console.log(selectedItemIDs);
 
-		let queryFilter = {itemID:{$in:selectedItemIDs}};
-		let resultFilter = {'_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0};
+		let queryFilter = { 'itemID':{ $in:selectedItemIDs } };
+		let resultFilter = { '_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0 };
 
 		let items = [];
 
@@ -543,8 +538,8 @@ module.exports = function(app, mongoClient) {
 
 		console.log(selectedItemIDs);
 
-		let queryFilter = {itemID:{$in:selectedItemIDs}};
-		let resultFilter = {'_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0};
+		let queryFilter = { 'itemID':{ $in:selectedItemIDs } };
+		let resultFilter = { '_id':0,'itemID':1,'name':1,'price':1,'description':1,'quantity':0 };
 
 		let items = [];
 
@@ -650,11 +645,18 @@ module.exports = function(app, mongoClient) {
 			return res.redirect('login_register');
 		}
 
-		let queryFilter = { userID:sessionData.user.userID };
+		let queryFilter = { 'userID':sessionData.user.userID };
 		await getOrders(db, queryFilter, {}).then(
-		(orders) => {
+		(result) => {
 
-			return res.render('view_orders', { data: orders });
+			if (!result.messages.success) {
+
+				return res.redirect('error');
+			}
+
+			let data = { 'orders':result.orders };
+			console.log(data);
+			return res.render('view_orders', { data });
 		}, 
 		(err) => {
 
@@ -670,7 +672,7 @@ module.exports = function(app, mongoClient) {
 
 		let success = false;
 
-		await getOneUser(db, {'userID':userID}, {_id:0, userID:1, username:0}).then(
+		await getOneUser(db, { 'userID':userID }, { _id:0, userID:1, username:0 }).then(
 		(result) => {
 
 			if (result.messages.success && result.user && result.user.userID == userID)
@@ -974,7 +976,7 @@ module.exports = function(app, mongoClient) {
 			const queryOptions = { session };
 
 			// Loop over each item to verify it exists and meets the quantity requirements, and update its quantity
-			items.forEach((item) => {
+			items.forEach(async (item) => {
 
 				let queryFilter = { 'itemID':item.itemID };
 				await (getOneItem(db, queryFilter, {'_id':0,'itemID':0,'name':0,'price':0,'description':0,'quantity':1})).then(
@@ -982,14 +984,12 @@ module.exports = function(app, mongoClient) {
 
 						if (!result.item || !result.messages.success) {
 
-							messages.txt = `Failed to select item id ${items[i].itemID} during checkout`;
+							messages.txt = `Failed to select item id ${item.itemID} during checkout`;
 							throw new Error(messages.txt);
 						}
 
-						let item = result.item;
-
 						// Verify the requested quantity is not greater than the available quantity
-						if (item.quantity < items[i].quantity) {
+						if (result.item.quantity < item.quantity) {
 
 							messages.txt = `Invalid item quantity found during checkout`;
 							throw new Error(messages.txt);
@@ -997,10 +997,10 @@ module.exports = function(app, mongoClient) {
 
 						// Update the item's quantity by subtracting the shopping cart item's quantity from the item in the database
 						await db.collection('items').updateOne(
-							{'itemID':items[i].itemID}, 
-							{$set: {'quantity':item.quantity - items[i].quantity}}, 
+							{ 'itemID':result.item.itemID }, 
+							{ $set: { 'quantity':result.item.quantity - item.quantity } }, 
 							queryOptions
-						).then(() => { console.log(`Successfully updated item with id ${items[i].itemID}`) }, 
+						).then(() => { console.log(`Successfully updated item with id ${ result.item.itemID }`) }, 
 						(err) => {
 
 							if (err) {
@@ -1012,19 +1012,20 @@ module.exports = function(app, mongoClient) {
 					}, 
 					(err) => { 
 
-					messages.txt = `Failed to select item id ${items[i].itemID} during checkout`;
+					messages.txt = `Failed to select item id ${item.itemID} during checkout`;
 					throw err;
 				})
 			});			
 
 			// Create a new order object with a unique ID
 			await getOrders(db, {}, {}).then(
-
 				async (orders) => {
+
+					let currentDate = new Date();
 
 					let order = {};
 					order.userID = userID;
-					order.date = date.format(Date.now(), 'ddd, MMM DD, YYYY HH:mm:ss (zz)');
+					order.date = date.format(currentDate, 'ddd, MMM DD, YYYY HH:mm:ss');
 					order.items = [];
 
 					// Add relevant item details to the order
@@ -1193,7 +1194,7 @@ module.exports = function(app, mongoClient) {
 
 			console.log(order);
 			await db.collection('orders').insertOne(
-				{ order } ,
+				{ 'userID':order.userID,'date':order.date,'items':order.items },
 				queryOptions
 			).then(() => {}, (err) =>  {
 

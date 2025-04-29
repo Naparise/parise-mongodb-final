@@ -10,27 +10,85 @@
 
 		<div class="content">
 
-			<h2>Past Orders</h2>
+			<% if (typeof data != "undefined" && typeof data.orders != "undefined" && data.orders.length > 0) { %>
 
-			<% if (typeof data != "undefined" && typeof data.items != "undefined" && data.orders.length > 0) { %>
+				<div class="center">
 
-				<div class="item-list-flex">
+					<div class="bubble inline">
 
-					<% for (let order in data.orders) { %>
-
-						<div class="order-container">
+						<h2>Past Orders</h2>
+	
+						<table class="order-table">
+	
+							<% data.orders.forEach((order) => { %>
 		
-							<span class="bold"><%= order.name %></span><br>
-							<span>$<%= order.date %></span><br>
-
-							<% for (let item in order.items) {%>
-
-								<span>Price: $<%= item.price %></span><br>
-								<span>Quantity: $<%= item.quantity %></span>
-								<span>Total: $<%= item.total %></span>
-							<% } %>
-						</div>
-					<% } %>
+								<tr>
+									<td class="order-header">
+		
+										Order ID: <%= order._id %><br>
+										Date: <%= order.date %>
+									</td>
+									<td>
+		
+										<table class="item-table">
+		
+											<tr class="item-table-row">
+		
+												<th class="item-table-data-wide">
+				
+													<span>Product Name</span>
+												</td>
+												<th class="item-table-data">
+				
+													<span>Unit Price</span><br>
+												</td>
+												<th class="item-table-data">
+				
+													<span>Quantity</span>
+												</td>
+												<th class="item-table-data">
+				
+													<span>Total</span>
+												</td>
+											</tr>
+		
+											<% let total = 0 %>
+		
+											<% order.items.forEach((item) => {%>
+												<% total += item.total; %>
+												<tr class="item-table-row">
+				
+													<td class="item-table-data-wide">
+				
+														<span><%= item.name %></span>
+													</td>
+													<td class="item-table-data">
+					
+														<span>$<%= item.price %></span><br>
+													</td>
+													<td class="item-table-data">
+					
+														<span><%= item.quantity %></span>
+													</td>
+													<td class="item-table-data">
+					
+														<span>$<%= item.total %></span>
+													</td>
+												</tr>
+												
+											<% }); %>
+		
+											<tr class="item-table-row">
+												<td class="item-table-data"></td><td></td><td></td>
+												<td>$<%= total %></td>
+											</tr>
+		
+										</table>
+									</td>
+								</tr>
+							<% }); %>
+						</table>
+					</div>
 				</div>
 
 				<footer class="bubble static-footer">
@@ -39,7 +97,8 @@
 
 						<button type="submit" value="back" class="button-larger">Back</button>
 					</form>
-				</footer>
+				</div>
+
 			<% } else { %>
 				<div class="bubble">
 
