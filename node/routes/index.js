@@ -645,25 +645,105 @@ module.exports = function(app, mongoClient) {
 			return res.redirect('login_register');
 		}
 
+		console.log(request.body);
+
+		let data = null;
+		let orders = null;
+
+		let success;	// Item rating display requires many database interactions
+						// A single boolean is used to determine the overall success of these interactions
+
 		let queryFilter = { 'userID':sessionData.user.userID };
 		await getOrders(db, queryFilter, {}).then(
 		(result) => {
 
 			if (!result.messages.success) {
 
-				return res.redirect('error');
+				success = false;
+				return;
 			}
 
-			let data = { 'orders':result.orders };
+			orders = result.orders;
+
+			data = { 'orders':orders };
 			console.log(data);
-			return res.render('view_orders', { data });
+
+			success = true;
 		}, 
 		(err) => {
 
 			console.error('Database query failed!');
 			console.error(err);
-			return res.redirect('error');
+			success = false;
+			return;
 		})
+
+		
+		// Get potential rating submission
+		if (success && request.body.ratingInfo && request.body.rating) {
+
+			let ratingInfo = JSON.parse(request.body.ratingInfo);
+			console.log(request.body.ratingInfo);
+			console.log(request.body.rating);
+			console.log(ratingInfo.ratingIndex);
+			let rating = request.body.rating[ratingInfo.ratingIndex] / 2;
+
+			let order = null;
+			let item = null;
+
+			let found = false;
+
+			let itemCounter = 0;
+			
+			// Find the particular order and item associated with the rating
+			for (let orderIndex = 0; orderIndex < orders.length; orderIndex++) {
+
+				for (let itemIndex = 0; itemIndex < orders[orderIndex].items.length; itemIndex++) {
+
+					if (itemCounter == ratingInfo.ratingIndex) {
+
+						order = orders[orderIndex];
+						item = order.items[itemIndex];
+						found = true;
+						break;
+					}
+
+					itemCounter++;
+				}
+
+				if (found) break;
+
+			}
+
+			if (order && item) {
+
+				console.log(`User gave a rating of ${rating} stars on order ${ratingInfo.orderIndex} (id=${order._id}) item ${ratingInfo.itemIndex} (id=${item.itemID})`);
+			}
+
+			// Add the item rating to the database
+			await rateOrderItem(db, order._id, item.itemID, rating).then(
+			(result) => {
+
+				if (!result.messages.success) {
+
+					success = false;
+					return;
+				}
+
+				// Just update the rating the item in the data object instead of pulling down the order/item from the database again
+				data.orders[ratingInfo.orderIndex].items[ratingInfo.itemIndex].rating = rating;
+			}, 
+			(err) => {
+
+				console.error('Database query failed!');
+				console.error(err);
+				success = false;
+				return;
+			});
+		}
+
+		if (success) return res.render('view_orders', { data });
+		else return res.redirect('error');
 	}
 
 	app.get('/:url', routeAny);
@@ -1039,11 +1119,13 @@ module.exports = function(app, mongoClient) {
 					items.forEach((item) => {
 
 						let cleanedItem = {};
-
+						
+						cleanedItem.itemID = item.itemID;
 						cleanedItem.name = item.name;
 						cleanedItem.price = item.price;
 						cleanedItem.quantity = item.quantity;
 						cleanedItem.total = cleanedItem.price * cleanedItem.quantity;
+						cleanedItem.rating = -1;
 
 						order.items.push(cleanedItem);
 					});
@@ -1157,7 +1239,8 @@ module.exports = function(app, mongoClient) {
 
 			const queryOptions = { session };
 
-			await db.collection('orders').findOne(queryFilter, resultFilter, queryOptions).then((result) => {
+			await db.collection('orders').findOne(queryFilter, resultFilter, queryOptions).then(
+			(result) => {
 		
 				order = result;
 			}, (err) => {
@@ -1199,7 +1282,6 @@ module.exports = function(app, mongoClient) {
 
 			const queryOptions = { session };
 
-			console.log(order);
 			await db.collection('orders').insertOne(
 				{ 'userID':order.userID,'date':order.date,'items':order.items },
 				queryOptions
@@ -1216,6 +1298,119 @@ module.exports = function(app, mongoClient) {
 			await session.commitTransaction();
 
 			messages.txt = 'Order insert complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.log(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages };
+	}
+
+	// Rate an item within an order
+	async function rateOrderItem(db, orderID, itemID, rating) {
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			let items = null;
+
+			// Ensure the order exists and get its items
+			let orderQueryFilter = { '_id':orderID };
+			let orderResultFilter= {};
+			await getOneOrder(db, orderQueryFilter, orderResultFilter).then(
+			(result) => {
+
+				if (!result.order) {
+
+					messages.txt = 'Error reading order from database';
+					throw new Error('The requested order could not be found');
+				}
+
+				items = result.order.items;
+			}, 
+			(err) => {
+
+				if (err) {
+
+					messages.txt = 'Error reading order from database';
+					throw new Error(messages.txt);
+				}
+			})
+
+			// Ensure the item exists
+			let itemQueryFilter = { 'itemID':itemID };
+			let itemResultFilter= {};
+			await getOneItem(db, itemQueryFilter, itemResultFilter).then(
+			(result) => {
+
+				if (!result) {
+
+					messages.txt = 'Error reading item from database';
+					throw new Error('The requested item could not be found');
+				}
+			}, 
+			(err) => {
+
+				if (err) {
+
+					messages.txt = 'Error reading item from database';
+					throw new Error(messages.txt);
+				}
+			});
+
+			let found = false;
+
+			// Add the rating to the requested item if it exists in the order
+			items.forEach((item) => {
+
+				if (item.itemID == itemID) {
+
+					item.rating = rating;
+					found = true;
+					return;
+				}
+			})
+
+			// Make sure an item was found and rated
+			if (!found) {
+
+				messages.txt = 'The item was not present within the given order';
+				throw new Error(messages.txt);
+			}
+
+			// Update the order with the new item list
+			let updateFilter = { '_id':orderID };
+			let updateColumn = { $set: { 'items':items } };
+			await db.collection('orders').updateOne(updateFilter, updateColumn, queryOptions).then(
+				() => {}, 
+				(err) =>  {
+
+				if (err) { 
+
+					messages.txt = 'Error inserting order into database';
+					throw err; 
+				}
+			});
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Item rating complete';
 			messages.success = true;
 		}
 		catch (error) {

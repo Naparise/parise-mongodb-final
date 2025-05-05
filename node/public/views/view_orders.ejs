@@ -17,77 +17,116 @@
 					<div class="bubble inline">
 
 						<h2>Past Orders</h2>
+
+						<form action="/view_orders" method="post">
 	
-						<table class="order-table">
-	
-							<% data.orders.forEach((order) => { %>
+							<table class="order-table">
+
+								<% let ratingIndex = 0 %>
 		
-								<tr>
-									<td class="order-header">
-		
-										Order ID: <%= order._id %><br>
-										Date: <%= order.date %>
-									</td>
-									<td>
-		
-										<table class="item-table">
-		
-											<tr class="item-table-row">
-		
-												<th class="item-table-data-wide">
-				
-													<span>Product Name</span>
-												</td>
-												<th class="item-table-data">
-				
-													<span>Unit Price</span><br>
-												</td>
-												<th class="item-table-data">
-				
-													<span>Quantity</span>
-												</td>
-												<th class="item-table-data">
-				
-													<span>Total</span>
-												</td>
-											</tr>
-		
-											<% let total = 0 %>
-		
-											<% order.items.forEach((item) => {%>
-												<% total += item.total; %>
+								<% for (let orderIndex = 0; orderIndex < data.orders.length; orderIndex++) { %>
+									<% let order = data.orders[orderIndex] %>
+			
+									<tr>
+										<td class="order-header">
+			
+											Order ID: <%= order._id %><br>
+											Date: <%= order.date %>
+										</td>
+										<td>
+			
+											<table class="item-table">
+			
 												<tr class="item-table-row">
-				
-													<td class="item-table-data-wide">
-				
-														<span><%= item.name %></span>
-													</td>
-													<td class="item-table-data">
+			
+													<th class="item-table-data-wide">
 					
-														<span>$<%= item.price %></span><br>
+														<span>Product Name</span>
 													</td>
-													<td class="item-table-data">
+													<th class="item-table-data">
 					
-														<span><%= item.quantity %></span>
+														<span>Unit Price</span><br>
 													</td>
-													<td class="item-table-data">
+													<th class="item-table-data">
 					
-														<span>$<%= item.total %></span>
+														<span>Quantity</span>
+													</td>
+													<th class="item-table-data">
+					
+														<span>Total</span>
+													</td>
+													<th class="item-table-data">
+					
+														<span>Rating</span>
+													</td>
+													<th class="item-table-data">
+					
+														<span></span>
 													</td>
 												</tr>
-												
-											<% }); %>
-		
-											<tr class="item-table-row">
-												<td class="item-table-data"></td><td></td><td></td>
-												<td>$<%= total %></td>
-											</tr>
-		
-										</table>
-									</td>
-								</tr>
-							<% }); %>
-						</table>
+			
+												<% let total = 0 %>
+			
+												<% for (let itemIndex = 0; itemIndex < order.items.length; itemIndex++) {%>
+													<%	
+														let item = order.items[itemIndex];
+														total += item.total;
+													%>
+													<tr class="item-table-row">
+					
+														<td class="item-table-data-wide">
+					
+															<span><%= item.name %></span>
+														</td>
+														<td class="item-table-data">
+						
+															<span>$<%= item.price %></span><br>
+														</td>
+														<td class="item-table-data">
+						
+															<span><%= item.quantity %></span>
+														</td>
+														<td class="item-table-data">
+						
+															<span>$<%= item.total %></span>
+														</td>
+														<td class="item-table-data">
+															<% if (item.rating >= 0) { %>
+
+															<span><%= item.rating %></span>
+															<input type="hidden" name="rating" value=<%= item.rating %>>
+
+															<% } else {%>
+
+															<input type="range" name="rating" min="0" max="10" value="0" step="1">
+
+															<% } %>
+														</td>
+														<td class="item-table-data">
+
+															<% if (item.rating < 0) { %>
+
+																<button type="submit" name="ratingInfo" value=<%= `{"orderIndex":${orderIndex},"itemIndex":${itemIndex},"ratingIndex":${ratingIndex},"itemID":${item.itemID}}` %> class="button-larger">Submit</button>
+																
+																<% } %>
+														</td>
+													</tr>
+													
+													<% ratingIndex++; %>
+												<% }; %>
+			
+												<tr class="item-table-row">
+													<td class="item-table-data"></td><td></td><td></td>
+													<td>$<%= parseFloat(total).toFixed(2) %></td>
+													<td></td><td></td>
+												</tr>
+			
+											</table>
+										</td>
+									</tr>
+								<% }; %>
+							</table>
+						</form>
 					</div>
 				</div>
 
