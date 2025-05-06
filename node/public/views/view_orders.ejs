@@ -88,7 +88,7 @@
 														</td>
 														<td class="item-table-data">
 						
-															<span>$<%= item.total %></span>
+															<span>$<%= parseFloat(item.total).toFixed(2) %></span>
 														</td>
 														<td class="item-table-data">
 															<% if (item.rating >= 0) { %>
@@ -107,7 +107,7 @@
 																	
 																	 (<%= item.rating %>)
 																</span>
-																
+
 															<input type="hidden" name="rating" value=<%= item.rating %>>
 
 															<% } else {%>

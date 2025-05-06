@@ -37,9 +37,13 @@
 									☆
 								<% } %>
 								
-								 (<%= items[i].rating %>)
+								 <%= items[i].rating > 0 ? `(${items[i].rating})` : '' %>
 							</span><br>
-							<span>(<%= items[i].numRatings %> Review<%= items[i].numRatings == 1 ? '' : 's' %>)</span><br>
+							<% if (items[i].numRatings > 0) { %>
+								<span>(<%= items[i].numRatings %> Review<%= items[i].numRatings == 1 ? '' : 's' %>)</span><br>
+								<% } else { %>
+								<span>(No Reviews)</span><br>
+								<% } %>
 
 							<% if (items[i].quantity > 0) {%>
 
