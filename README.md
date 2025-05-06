@@ -73,5 +73,7 @@ User ratings are provided on a 1 - 5 half-star scale, for each item per order.
 Per-item rating averages displayed on the catalog page are rounded up or down at the quarter marks.
 
 Examples:
+
 3.24 rounds down to 3 stars, 3.25 rounds up to 3.5.
+
 3.74 rounds down to 3.5 stars, 3.75 rounds up to 4.
