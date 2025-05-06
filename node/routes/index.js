@@ -225,34 +225,73 @@ module.exports = function(app, mongoClient) {
 
 			return res.redirect('login_register');
 		}
+
+		let success = false;
 	
 		// Get all items from the database
+		let items = null;
+
 		let inputFilter = {}
 		let outputFilter = { '_id':0,'itemID':0,'name':1,'price':1,'description':1,'quantity':1 };
 		await getItems(db, inputFilter, outputFilter).then((result) => {
 
 			if (result.messages.success && result.items) {
 
-				let items = result.items
-
-				console.log('Query completed');
-				console.log(items);
-	
-				// Render catalog with retrieved item data
-				res.render('shop_catalog', { items });
+				items = result.items
+				success = true;
 
 			} else {
 
+				success = false;
 				console.error('Catalog query failed!');
-				return res.redirect('error');
 			}
 			
 		}, (err) => {
 
+			success = false;
 			console.error('Database query failed!');
 			console.error(err);
-			return res.redirect('error');
 		});
+
+		if (success) {
+
+			for (let i = 0; i < items.length; i++) {
+
+				await getAverageRating(db, items[i].itemID).then(
+				(result) => {
+
+					if (result.messages.success) {
+
+						// let ratingDec = result.rating % 1;				// Decimal portion of the rating
+						// let roundedDec = Math.round(ratingDec * 2) / 2;	// Round decimal portion; [0, 0.25) = 0 ; [0.25, 0.75) = 0.5 ; [0.75, 1) = 1
+						// let avgRating = result.rating - ratingDec + roundedDec;
+
+						let avgRating = result.item.rating - (result.item.rating % 1) + (Math.round(result.item.rating % 1 * 2) / 2);
+						items[i].rating = avgRating;
+						items[i].numRatings = result.item.numRatings;
+					}
+					else {
+
+						success = false;
+						console.error('Average rating failed for at least one item');
+						return;
+					}
+				}, 
+				(err) => {
+
+					if (err) {
+
+						success = false;
+						console.error('Average rating failed for at least one item');
+						console.err(err);
+					}
+				});
+			}
+		}
+
+		// Render catalog with retrieved item data
+		if (success) res.render('shop_catalog', { items });
+		else return res.redirect('error');
 	};
 	
 	app.post('/generate_data', function(request, res) {	// Fake Data Generation
@@ -683,10 +722,7 @@ module.exports = function(app, mongoClient) {
 		if (success && request.body.ratingInfo && request.body.rating) {
 
 			let ratingInfo = JSON.parse(request.body.ratingInfo);
-			console.log(request.body.ratingInfo);
-			console.log(request.body.rating);
-			console.log(ratingInfo.ratingIndex);
-			let rating = request.body.rating[ratingInfo.ratingIndex] / 2;
+			let rating = parseFloat(request.body.rating[ratingInfo.ratingIndex]);
 
 			let order = null;
 			let item = null;
@@ -1348,7 +1384,7 @@ module.exports = function(app, mongoClient) {
 				if (err) {
 
 					messages.txt = 'Error reading order from database';
-					throw new Error(messages.txt);
+					throw err;
 				}
 			})
 
@@ -1369,7 +1405,7 @@ module.exports = function(app, mongoClient) {
 				if (err) {
 
 					messages.txt = 'Error reading item from database';
-					throw new Error(messages.txt);
+					throw err;
 				}
 			});
 
@@ -1397,8 +1433,8 @@ module.exports = function(app, mongoClient) {
 			let updateFilter = { '_id':orderID };
 			let updateColumn = { $set: { 'items':items } };
 			await db.collection('orders').updateOne(updateFilter, updateColumn, queryOptions).then(
-				() => {}, 
-				(err) =>  {
+			() => {}, 
+			(err) =>  {
 
 				if (err) { 
 
@@ -1406,6 +1442,20 @@ module.exports = function(app, mongoClient) {
 					throw err; 
 				}
 			});
+
+			// Insert the rated item into a separate "ratings" table
+			let ratingEntry = { 'orderID':orderID, 'itemID':itemID, 'rating':rating }
+			await db.collection('ratings').insertOne(ratingEntry, queryOptions).then(
+			() => {}, 
+			(err) => {
+
+				if (err) {
+
+					messages.txt = 'Error inserting rating into database';
+					throw err;
+				}
+			});
+
 
 			// Commit transaction
 			await session.commitTransaction();
@@ -1425,6 +1475,72 @@ module.exports = function(app, mongoClient) {
 		// End of session
 		session.endSession();
 		return { messages };
+	}
+
+	// Get the (unrounded) average rating of the specified item
+	async function getAverageRating(db, itemID) {
+
+		let item = { 'rating':0,'numRatings':0 };
+
+		const session = await mongoClient.startSession();
+		messages = {};
+
+		// Begin transaction
+		session.startTransaction();
+
+		try {
+
+			const queryOptions = { session };
+
+			// Get all ratings of the item
+			let ratingEntries = [];
+			let cursor = db.collection('ratings').find({'itemID':itemID}, {}, queryOptions);
+			await executeQueryCursor(cursor).then((result) => {
+				
+				ratingEntries = result;
+
+			}, (err) => {
+
+				messages.txt = 'Database query failed!';
+				throw(err);
+			});
+
+			// Get average rating (unrounded)
+			item.numRatings = ratingEntries.length;
+			let totalRating = 0;
+			
+			if (item.numRatings > 0) {
+
+				ratingEntries.forEach((entry) => {
+
+					totalRating += entry.rating;
+				});
+	
+				item.rating = totalRating / item.numRatings;
+			}
+			else {
+
+				item.rating = 0;
+			}
+
+			// Commit transaction
+			await session.commitTransaction();
+
+			messages.txt = 'Database lookup complete';
+			messages.success = true;
+		}
+		catch (error) {
+
+			console.error(error);
+			messages.success = false;
+
+			// Cancel transaction
+			await session.abortTransaction();
+		}
+
+		// End of session
+		session.endSession();
+		return { messages, item };
 	}
 
 

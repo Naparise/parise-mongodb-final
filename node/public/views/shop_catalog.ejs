@@ -25,6 +25,10 @@
 
 							<span class="bold"><%= items[i].name %></span><br>
 							<span>$<%= items[i].price %></span><br>
+
+							<span><%= items[i].rating %></span><br>
+							<span>(<%= items[i].numRatings %> Review<%= items[i].numRatings == 1 ? '' : 's' %>)</span><br>
+
 							<% if (items[i].quantity > 0) {%>
 
 								<span>In stock: <%= items[i].quantity %></span><br>

@@ -93,12 +93,23 @@
 														<td class="item-table-data">
 															<% if (item.rating >= 0) { %>
 
-															<span><%= item.rating %></span>
+															<span><%= item.rating %> Stars</span>
 															<input type="hidden" name="rating" value=<%= item.rating %>>
 
 															<% } else {%>
 
-															<input type="range" name="rating" min="0" max="10" value="0" step="1">
+															<select name="rating" class="review_select" id=<%= ratingIndex %>>
+																<option value=0>Choose a Rating</option>
+																<option value=1>1</option>
+																<option value=1.5>1.5</option>
+																<option value=2>2</option>
+																<option value=2.5>2.5</option>
+																<option value=3>3</option>
+																<option value=3.5>3.5</option>
+																<option value=4>4</option>
+																<option value=4.5>4.5</option>
+																<option value=5>5</option>
+															</select>
 
 															<% } %>
 														</td>
@@ -106,14 +117,14 @@
 
 															<% if (item.rating < 0) { %>
 
-																<button type="submit" name="ratingInfo" value=<%= `{"orderIndex":${orderIndex},"itemIndex":${itemIndex},"ratingIndex":${ratingIndex},"itemID":${item.itemID}}` %> class="button-larger">Submit</button>
+																<button type="submit" name="ratingInfo" value=<%= `{"orderIndex":${orderIndex},"itemIndex":${itemIndex},"ratingIndex":${ratingIndex},"itemID":${item.itemID}}` %> class="button_larger" id=<%= `button_${ratingIndex}` %> disabled>Submit</button>
 																
 																<% } %>
 														</td>
 													</tr>
 													
 													<% ratingIndex++; %>
-												<% }; %>
+												<% } %>
 			
 												<tr class="item-table-row">
 													<td class="item-table-data"></td><td></td><td></td>
@@ -124,7 +135,7 @@
 											</table>
 										</td>
 									</tr>
-								<% }; %>
+								<% } %>
 							</table>
 						</form>
 					</div>
@@ -150,5 +161,8 @@
 				</div>
 			<% } %>
 		</div>
+
+		<script src="../js/view_orders.js"></script>
+
 	</body>
 </html>
