@@ -66,3 +66,12 @@ node webapp.js
 Running with its default settings, the home page can be accessed at `localhost:3000` from your web browser.
 
 This script contains a hard-coded and publicly accessible session secret for cookie tracking. This would be a major security vulnerability in a real, public-facing application, which this project is not intended to be. In the case that a more secure secret is preferred, it can be customized by setting the `COOKIE_SECRET` environment variable on the host system.
+
+## Product Ratings
+User ratings are provided on a 1 - 5 half-star scale, for each item per order.
+
+Per-item rating averages displayed on the catalog page are rounded up or down at the quarter marks.
+
+Examples:
+3.24 rounds down to 3 stars, 3.25 rounds up to 3.5.
+3.74 rounds down to 3.5 stars, 3.75 rounds up to 4.

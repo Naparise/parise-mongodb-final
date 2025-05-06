@@ -264,9 +264,9 @@ module.exports = function(app, mongoClient) {
 
 						// let ratingDec = result.rating % 1;				// Decimal portion of the rating
 						// let roundedDec = Math.round(ratingDec * 2) / 2;	// Round decimal portion; [0, 0.25) = 0 ; [0.25, 0.75) = 0.5 ; [0.75, 1) = 1
-						// let avgRating = result.rating - ratingDec + roundedDec;
+						// let avgRating = Math.floor(result.rating) + roundedDec;
 
-						let avgRating = result.item.rating - (result.item.rating % 1) + (Math.round(result.item.rating % 1 * 2) / 2);
+						let avgRating = Math.floor(result.item.rating) + (Math.round(result.item.rating % 1 * 2) / 2);
 						items[i].rating = avgRating;
 						items[i].numRatings = result.item.numRatings;
 					}
@@ -724,6 +724,13 @@ module.exports = function(app, mongoClient) {
 			let ratingInfo = JSON.parse(request.body.ratingInfo);
 			let rating = parseFloat(request.body.rating[ratingInfo.ratingIndex]);
 
+			// Ensure the provided rating is within correct bounds, otherwise redirect the user
+			if (rating < 1 || rating > 5) {
+
+				let error = { 'message':'Invalid rating. Please try again.' };
+				return res.render('error', { error });
+			}
+
 			let order = null;
 			let item = null;
 
@@ -754,28 +761,28 @@ module.exports = function(app, mongoClient) {
 			if (order && item) {
 
 				console.log(`User gave a rating of ${rating} stars on order ${ratingInfo.orderIndex} (id=${order._id}) item ${ratingInfo.itemIndex} (id=${item.itemID})`);
-			}
 
-			// Add the item rating to the database
-			await rateOrderItem(db, order._id, item.itemID, rating).then(
-			(result) => {
-
-				if (!result.messages.success) {
-
+				// Add the item rating to the database
+				await rateOrderItem(db, order._id, item.itemID, rating).then(
+				(result) => {
+	
+					if (!result.messages.success) {
+	
+						success = false;
+						return;
+					}
+	
+					// Just update the rating the item in the data object instead of pulling down the order/item from the database again
+					data.orders[ratingInfo.orderIndex].items[ratingInfo.itemIndex].rating = rating;
+				}, 
+				(err) => {
+	
+					console.error('Database query failed!');
+					console.error(err);
 					success = false;
 					return;
-				}
-
-				// Just update the rating the item in the data object instead of pulling down the order/item from the database again
-				data.orders[ratingInfo.orderIndex].items[ratingInfo.itemIndex].rating = rating;
-			}, 
-			(err) => {
-
-				console.error('Database query failed!');
-				console.error(err);
-				success = false;
-				return;
-			});
+				});
+			}
 		}
 
 		if (success) return res.render('view_orders', { data });

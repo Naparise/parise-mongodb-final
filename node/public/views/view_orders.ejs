@@ -93,7 +93,21 @@
 														<td class="item-table-data">
 															<% if (item.rating >= 0) { %>
 
-															<span><%= item.rating %> Stars</span>
+																<span>
+
+																	<% for (let starCount = 0; starCount < Math.floor(item.rating); starCount++) { %>
+																		★
+																	<% } %>
+									
+																	<%= item.rating % 1 > 0 ? '⯪' : '' %>
+									
+																	<% for (let starCount = Math.ceil(item.rating); starCount < 5; starCount++) { %>
+																		☆
+																	<% } %>
+																	
+																	 (<%= item.rating %>)
+																</span>
+																
 															<input type="hidden" name="rating" value=<%= item.rating %>>
 
 															<% } else {%>
